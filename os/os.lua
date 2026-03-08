@@ -80,11 +80,12 @@ local defaultTheme = {
     backgroundColor = colors.red,
     shadow = true,
     shadowColor = colors.gray,
+    toolbarColors = nil,
     mainColors = {
         text = colors.black,
         background = colors.white,
-        clickText = colors.black,
-        clickBackground = colors.lightBlue,
+        downText = colors.black,
+        downBackground = colors.lightBlue,
         focusText = colors.black,
         focusBackground = colors.lightGray,
     },
@@ -93,8 +94,8 @@ local defaultTheme = {
         background = colors.white,
         focusText = colors.white,
         focusBackground = colors.blue,
-        clickBackground = colors.white,
-        clickText = colors.black,
+        downBackground = colors.white,
+        downText = colors.black,
         exitText = colors.black,
         exitBackground = colors.red,
     },
@@ -106,6 +107,7 @@ local defaultTheme = {
 
 ---@class Profile
 local defaultProfile = {
+    backgroundColor = nil,
     backgroundIcon = toOsPath("/textures/backgrounds/melvin.nfp"),
     fileExceptions = {
         [".nfp"] = {
@@ -228,7 +230,7 @@ function mos.refreshTheme()
         end
     end
 
-    mos.applyTheme(engine)
+    mos.style = mos.applyTheme(engine)
     engine.backgroundColor = mos.profile.backgroundColor or mos.theme.backgroundColor
     engine.root:queueDraw()
     os.queueEvent("mos_refresh_theme")
@@ -236,11 +238,12 @@ end
 
 ---comment
 ---@param targetEngine Engine
-function mos.applyTheme(targetEngine)
+---@param theme Theme?
+function mos.applyTheme(targetEngine, theme)
     assert(targetEngine ~= nil)
     local e = targetEngine
     --Styles
-    local theme = mos.theme
+    theme = theme or mos.theme
     --Background
     e.backgroundColor = theme.mainColors.background
     theme.shadowColor = theme.shadowColor or colors.black
@@ -248,55 +251,71 @@ function mos.applyTheme(targetEngine)
     --Toolbar
     local mainColors = theme.mainColors
 
-    local style = e.normalStyle
-    local clickStyle = e.clickStyle
-    local focusStyle = e.focusStyle
-    local optionNormalStyle = e.dropdownOptionNormalStyle
-    local optionClickStyle = e.dropdownOptionClickStyle
-    local windowNormalStyle = e.windowNormalStyle
-    local windowFocusStyle = e.windowFocusStyle
-    local windowClickStyle = e.windowClickStyle
-    local windowExitButtonStyle = e.windowExitButtonStyle
+    local style = e.style
+    local styleDown = e.styleDown
+
+    local styleWindow = e.style:inherit()
+    local styleWindowFocus = e.style:inherit()
+
+    local styleToolbar = style:inherit()
+    local styleToolbarDown = styleDown:inherit()
+    local styleToolbarFullscreen = styleWindowFocus:inherit()
+    local styleToolbarFullscreenDown = styleDown:inherit()
+    if theme.toolbarColors then
+        styleToolbar.textColor = theme.toolbarColors.text
+        styleToolbar.backgroundColor = theme.toolbarColors.background
+
+        styleToolbarDown.textColor = theme.toolbarColors.downText
+        styleToolbarDown.backgroundColor = theme.toolbarColors.downBackground
+    
+        styleToolbarFullscreen.textColor = theme.toolbarColors.fullscreenText
+        styleToolbarFullscreen.backgroundColor = theme.toolbarColors.fullscreenBackground
+
+        styleToolbarFullscreenDown.textColor = theme.toolbarColors.fullscreenDownText
+        styleToolbarFullscreenDown.backgroundColor = theme.toolbarColors.fullscreenDownBackground
+    end
+
+    e. style = styleToolbar
+    e.Dropdown.styleDown = styleToolbarDown
+
+    e.WindowControl.style = styleWindow
+    e.WindowControl.styleFocus = styleWindowFocus
 
     style.textColor = mainColors.text
     style.backgroundColor = mainColors.background
     style.shadowColor = theme.shadowColor
     style.shadowOffsetU = 1
 
-    clickStyle.shadowColor = theme.shadowColor
+    styleDown.textColor = mainColors.downText
+    styleDown.backgroundColor = mainColors.downBackground
 
-    clickStyle.textColor = mainColors.clickText
-    clickStyle.backgroundColor = mainColors.clickBackground
-
-    focusStyle.textColor = mainColors.focusText
-    focusStyle.backgroundColor = mainColors.focusBackground
-
-    optionNormalStyle.shadowColor = theme.shadowColor
-
-    optionClickStyle.shadowColor = theme.shadowColor
-
-    --dropdown.optionNormalStyle = optionNormalStyle
-    --dropdown.optionClickStyle = optionClickStyle
     dropdown.optionShadow = theme.shadow
 
     --Window
     local windowColors = theme.windowColors
 
     programWindow.shadow = theme.shadow
-    windowNormalStyle.shadowColor = theme.shadowColor
-    windowNormalStyle.shadowOffsetU = 0
-    windowNormalStyle.backgroundColor = windowColors.background
-    windowNormalStyle.textColor = windowColors.text
+    styleWindow.shadowColor = theme.shadowColor
+    styleWindow.shadowOffsetU = 0
+    styleWindow.backgroundColor = windowColors.background
+    styleWindow.textColor = windowColors.text
 
-    windowFocusStyle.backgroundColor = windowColors.focusBackground
-    windowFocusStyle.textColor = windowColors.focusText
-    windowFocusStyle.shadowOffsetU = 0
+    styleWindowFocus.backgroundColor = windowColors.focusBackground
+    styleWindowFocus.textColor = windowColors.focusText
+    styleWindowFocus.shadowOffsetU = 0
 
-    windowClickStyle.backgroundColor = windowColors.clickBackground
-    windowClickStyle.textColor = windowColors.clickText
+    local styles = {
+        main = style,
+        mainDown = styleDown,
+        window = styleWindow,
+        windowFocus = styleWindowFocus,
+        toolbar = styleToolbar,
+        toolbarDown = styleToolbarDown,
+        toolbarFullscreen = styleToolbarFullscreen,
+        toolbarFullscreenDown = styleToolbarFullscreenDown,
+    }
 
-    windowExitButtonStyle.backgroundColor = windowColors.exitBackground
-    windowExitButtonStyle.textColor = windowColors.exitText
+    return styles
 end
 
 mos.theme = defaultTheme
@@ -305,7 +324,7 @@ mos.profile = nil
 
 mos.loadProfile()
 mos.loadTheme(mos.profile.theme)
-engine.utils.saveTable(defaultTheme, toOsPath("/themes/defaultTheme.thm"))
+engine.utils.saveTable(defaultTheme, toOsPath("/themes/default.thm"))
 
 --Objects
 --Background
@@ -329,19 +348,25 @@ windowContainer.mouseIgnore = true
 windowContainer.rendering = false
 
 --Top Bar
-local topBar = focusContainer:addControl()
-topBar.rendering = false
+local topBar = focusContainer:addControl("")
+topBar.rendering = true
 topBar.mouseIgnore = true
 topBar.expandW = true
+function topBar:getStyle()
+    if mos.fullscreenWindow then
+       return mos.style.toolbarFullscreen
+    else
+       return mos.style.toolbar
+    end
+end
 
 --Tool Bar
 local toolBar = topBar:addHContainer()
-toolBar.rendering = true
-toolBar.background = true
 toolBar.expandW = true
 toolBar.h = 1
 toolBar.separation = 1
 toolBar.mouseIgnore = true
+toolBar.inheritStyle = true
 
 local function toolbarChildFocusChanged(c)
     if c.focus == true then
@@ -352,6 +377,7 @@ end
 function mos.addToToolbar(control)
     control:connectSignal(control.focusChangedSignal, toolbarChildFocusChanged, control)
     toolBar:add(control)
+    control.inheritStyle = true
 end
 
 function mos.removeFromToolbar(control)
@@ -399,6 +425,7 @@ function mos.refreshMosDropdown()
             end
             local x = option:addButton()
             x.text = string.char(3)
+            x.inheritStyle = true
             x.w = #x.text
             x.h = 1
             x.anchorW = x.Anchor.RIGHT
@@ -421,6 +448,7 @@ mos.refreshMosDropdown()
 local clock = topBar:addControl()
 clock.h = 1
 clock.anchorW = clock.Anchor.RIGHT
+clock.inheritStyle = true
 
 local function isFullscreen()
     return mos.fullscreenWindow ~= nil
@@ -430,16 +458,14 @@ local function setFullscreenMode(fullscreen)
     backgroundIcon.visible = fullscreen == false
     if fullscreen == true then
         topBar:toFront()
-        topBar.style = engine.windowFocusStyle
+        topBar.style = mos.style.toolbarFullscreen
+        engine.Dropdown.style = mos.style.toolbarFullscreen
+        engine.Dropdown.styleDown = mos.style.toolbarFullscreenDown
     else
         windowContainer:toFront()
-        topBar.style = engine.normalStyle
-    end
-
-    for _, child in ipairs(toolBar.children) do
-        if child.normalStyle then
-            child.normalStyle = topBar.style
-        end
+        topBar.style = mos.style.toolbar
+        engine.Dropdown.style = mos.style.toolbar
+        engine.Dropdown.styleDown = mos.style.toolbarDown
     end
 end
 
@@ -496,7 +522,8 @@ end
 ---comment
 ---@param window ProgramWindow
 local function windowFocusChanged(window)
-    window.programViewport.program.resume({ "mos_window_focus", window.focus })
+    --window.programViewport:queueEvent({ "mos_window_focus", window.focus })
+    window.programViewport:queueEvent({ "mos_window_focus", window.focus })
     if window.focus == false then
         return
     end
@@ -532,6 +559,7 @@ function mos.addWindow(w)
     b.window = w
     local x = b:addButton()
     x.text = "x"
+    x.inheritStyle = true
     x.w = #x.text
     x.h = 1
     x.anchorW = x.Anchor.RIGHT

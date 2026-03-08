@@ -15,13 +15,14 @@ ColorPicker.listQueue = nil
 ColorPicker.shortcutSelection = nil
 ColorPicker.optionShadow = false
 ColorPicker.inheritStyle = false
+ColorPicker.style = nil
 
 ---@param p ColorPicker
 ---@param color integer
 local function addColor(p, color)
     ---@type Control
     local b = p.list:addControl()
-    local colorStyle = style:new()
+    local colorStyle = style:unique()
     colorStyle.backgroundColor = color
     colorStyle.textColor = colors.black
     b.inheritStyle = false
@@ -43,6 +44,8 @@ end
 
 function ColorPicker:init()
     control.init(self)
+
+    self.style = style:unique()
 
     ---@type FlowContainer
     self.list = self:addFlowContainer()

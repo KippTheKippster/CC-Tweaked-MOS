@@ -1,59 +1,31 @@
 ---@return Button
-return function(control, style, clickStyle)
+return function(control, styleDown)
 ---@class Button : Control
 local Button = control:newClass()
 Button.__type = "Button"
 Button._text = "Button"
 Button.isClicked = false
-Button._normalStyle = style
----@type Style
-Button.normalStyle = nil
-Button:defineProperty("normalStyle", {
-    get = function(o)
-        return o._normalStyle
-    end,
-    set = function(o, value)
-        o._normalStyle = value
-        o:refreshStyle(o)
-    end
-})
 
-Button._clickStyle = clickStyle
----@type Style
-Button.clickStyle = nil
-Button:defineProperty("clickStyle", {
-    get = function(o)
-        return o._clickStyle
-    end,
-    set = function(o, value)
-        o._clickStyle = value
-        o:refreshStyle(o)
-    end
-})
+Button.styleDown = styleDown
 
-function Button:refreshStyle()
+function Button:getStyle()
     if self.isClicked then
-        self.style = self.clickStyle
+        return self.styleDown
     elseif self.inheritStyle then
-        self.style = self.parent.style
+        return self.parent:getStyle()
     else
-        self.style = self.normalStyle
+        return self.style
     end
-end
-
-function Button:treeEntered()
-    control.treeEntered(self)
-    self:refreshStyle()
 end
 
 function Button:down(b, x, y)
     self.isClicked = true
-    self:refreshStyle()
+    self:queueDraw()
 end
 
 function Button:up(b, x, y)
     self.isClicked = false
-    self:refreshStyle()
+    self:queueDraw()
 end
 
 return Button

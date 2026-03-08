@@ -64,14 +64,13 @@ Control.text = nil
 Control._text = "Control"
 
 ---@type Style
-Control.style = nil
-Control._style = style
+Control.style = style
 
 ---@type boolean
 Control.visible = nil
 Control._visible = true
 
-Control.inheritStyle = true
+Control.inheritStyle = false
 Control.centerText = false
 Control.focus = false
 Control.propogateFocusUp = false
@@ -149,8 +148,7 @@ function Control:updateGlobalPosition()
 end
 
 Control:defineProperty('x', {
-    get = function(o) 
-        --__log("---RETURINGING---")
+    get = function(o)
         return o._x end,
     set = function(o, value)
         local same = o._x == value
@@ -298,7 +296,6 @@ end
 function Control:expandChildren()
     local w = self.w - (self.marginL + self.marginR)
     local h = self.h
-    --__log(debug.traceback())
     for i = 1, #self.children do
         local c = self.children[i]
         if c.expandH then
@@ -397,24 +394,6 @@ Control:defineProperty('visible', {
     end
 })
 
-Control:defineProperty('style', {
-    get = function(o) return o._style end,
-    set = function(o, value)
-        local same = o._style == value
-        o._style = value
-        if same == false then
-            --for i = 1, #o.children do
-            --    local c = o.children[i]
-            --    if c.inheritStyle == true then
-            --        c.style = o._style
-            --    end
-            --end
-            o:queueDraw()
-            o:styleChanged()
-        end
-    end
-})
-
 Control:defineProperty('anchorW', {
     get = function(o) return o._anchorW end,
     set = function(o, value)
@@ -458,14 +437,24 @@ function Control:getBorders()
     return left, up, right, down
 end
 
+function Control:getStyle()
+    if self.inheritStyle then
+        return self.parent:getStyle()
+    else
+        return self.style
+    end
+end
+
 -- Determines how the control object is drawn
 function Control:render()
+    local s = self:getStyle()
     --SHADOW
-    self:drawShadow()
+    self:drawShadow(s)
     --PANEL
-    self:drawPanel(self:getBorders())
+    local l, u, r, d = self:getBorders()
+    self:drawPanel(l, u, r, d, s)
     --TEXT
-    self:write(self.text)
+    self:write(self.text, s)
 end
 
 -- Draws the control object if it is valid, NOTE this should not be used to redraw object, use 'queueDraw' instead
@@ -477,19 +466,21 @@ function Control:draw()
     self:render()
 end
 
-function Control:drawShadow()
+---@param style Style?
+function Control:drawShadow(style)
     if self.shadow ~= true then return end
     if self.w == 0 or self.h == 0 then return end
+    local s = style or self:getStyle()
 
     term.setTextColor(colors.black)
-    term.setBackgroundColor(self._style.shadowColor)
+    term.setBackgroundColor(s.shadowColor)
 
-    for i = 2 - self._style.shadowOffsetU, self.h + 1 + self._style.shadowOffsetD do
+    for i = 2 - s.shadowOffsetU, self.h + 1 + s.shadowOffsetD do
         term.setCursorPos(self.gx + self.w + 1, self.gy + i)
         term.write(string.char(127))
     end
 
-    for i = 2 - self._style.shadowOffsetL, self.w + self._style.shadowOffsetR do
+    for i = 2 - s.shadowOffsetL, self.w + s.shadowOffsetR do
         term.setCursorPos(self.gx + i, self.gy + self.h + 1)
         term.write(string.char(127))
     end
@@ -499,24 +490,26 @@ end
 ---@param up number
 ---@param right number
 ---@param down number
-function Control:drawPanel(left, up, right, down)
-    if self._style.background == true or self._style.background == nil then
+---@param style Style?
+function Control:drawPanel(left, up, right, down, style)
+    local s = style or self:getStyle()
+    if s.background == true or s.background == nil then
         paintutils.drawFilledBox(
             left,
             up,
             right,
             down,
-            self._style.backgroundColor
+            s.backgroundColor
         )
     end
 
-    if self._style.border then
+    if s.border then
         paintutils.drawBox(
             left,
             up,
             right,
             down,
-            self._style.borderColor
+            s.borderColor
         )
     end
 end
@@ -539,11 +532,14 @@ function Control:getTextPosition(text)
     return getTextPosition(self._gx, self._gy, self._w, self._h, self.centerText, text)
 end
 
-function Control:write(text)
+---@param text string
+---@param style Style?
+function Control:write(text, style)
     if text == "" or text == nil then
         return
     end
 
+    local st = style or self:getStyle()
     local m = self.marginR + self.marginL
     local l = #text - m
     if self.clipText == true then
@@ -555,8 +551,8 @@ function Control:write(text)
     _x = _x + self.marginL
 
     term.setCursorPos(_x, _y)
-    term.setTextColor(self._style.textColor)
-    term.setBackgroundColor(self._style.backgroundColor)
+    term.setTextColor(st.textColor)
+    term.setBackgroundColor(st.backgroundColor)
 
     local x, y = term.getCursorPos()
     local t = text:sub(s, s + l)
@@ -707,7 +703,6 @@ function Control:input(data) end
 function Control:textChanged() end
 function Control:sizeChanged() end
 function Control:transformChanged() end
-function Control:styleChanged() end
 function Control:visibilityChanged() end
 
 ---@param p Control

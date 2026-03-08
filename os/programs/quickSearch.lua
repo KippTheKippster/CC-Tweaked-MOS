@@ -7,7 +7,7 @@ local qs = engine.LineEdit:new()
 qs.h = 1
 qs.expandW = true
 qs.visible = false
-qs.focusStyle = mos.engine.normalStyle
+qs.styleFocus = mos.style.toolbar
 qs.marginL = 2
 qs._skip = true
 function qs:init()
@@ -120,6 +120,7 @@ icon.text = string.char(187)
 icon.fitToText = false
 icon.w = 2
 icon.h = 1
+icon.inheritStyle = true
 
 function qs:refreshList ()
     local pathSelection = ""

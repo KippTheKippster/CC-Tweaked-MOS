@@ -58,10 +58,12 @@ if mos then
     dirColor = mos.profile.dirColor or mos.theme.fileColors.dirText
 end
 
-local fileStyle = engine.normalStyle
-local dirStyle = engine.newStyle()
+local fileStyle = engine.style:unique()
+local fileSelectStyle = engine.style:unique()
+fileSelectStyle.backgroundColor = colors.lightGray
+local dirStyle = engine.style:unique()
 dirStyle.textColor = dirColor
-local dirSelectStyle = engine.newStyle(engine.focusStyle)
+local dirSelectStyle = fileSelectStyle:unique()
 dirSelectStyle.textColor = dirColor
 
 engine.background = false
@@ -162,14 +164,15 @@ end
 ---@class FileButton : Button
 local FileButton = engine.Button:newClass()
 FileButton.selected = false
-FileButton.selectStyle = engine.focusStyle
+FileButton.selectStyle = fileSelectStyle
 FileButton.path = ""
 FileButton._marginL = 1
 FileButton._marginR = 1
 
 function FileButton:render()
     --PANEL
-    if self.style ~= self.normalStyle then
+    local st = self:getStyle()
+    if st ~= self.normalStyle then -- Skip drawing background when it is the same as the program background
         self:drawPanel(self:getBorders())
     end
 
@@ -198,8 +201,8 @@ function FileButton:render()
     end
 
     if #text < self.w - #selfText - 2 then
-        term.setBackgroundColor(self.style.backgroundColor)
-        term.setTextColor(self.style.textColor)
+        term.setBackgroundColor(st.backgroundColor)
+        term.setTextColor(st.textColor)
         local x = self.w - #text
         term.setCursorPos(self.gx + x, self.gy + 1)
         term.write(text)
@@ -220,13 +223,13 @@ function FileButton:down()
     end
 end
 
-function FileButton:refreshStyle()
+function FileButton:getStyle()
     if self.isClicked then
-        self.style = self.clickStyle
+        return self.styleDown
     elseif self.selected then
-        self.style = self.selectStyle
+        return self.selectStyle
     else
-        self.style = self.normalStyle
+        return self.style
     end
 end
 
@@ -245,7 +248,7 @@ function fe.selectFileButton(b, clearSelection)
     scrollContainer:scrollToView(b.gy)
 
     fe.addToSelection(b)
-    b:refreshStyle()
+    b:queueDraw()
 end
 
 ---@param b FileButton
@@ -276,7 +279,7 @@ function fe.clearSelection()
     for i, b in ipairs(fe.selection) do
         if b:isValid() == true then
             b.selected = false
-            b:refreshStyle()
+            b:queueDraw()
         end
     end
 
@@ -292,18 +295,17 @@ function fe.newFileButton(name)
     fileButton.__name = name
     local path = fe.nameToPath(name)
     if fs.isDir(path) then
-        fileButton.normalStyle = dirStyle
+        fileButton.style = dirStyle
         fileButton.selectStyle = dirSelectStyle
         fileButton.doublePressed = function(o)
             fe.openDir(path)
         end
     else
-        fileButton.normalStyle = fileStyle
+        fileButton.style = fileStyle
         fileButton.doublePressed = function(o)
             fe.openFile(path, mos.getFileOpenModifierInput())
         end
     end
-    fileButton.style = fileButton.normalStyle
     fileButton.h = 1
     fileButton.expandW = true
     fileButton.dragSelectable = true

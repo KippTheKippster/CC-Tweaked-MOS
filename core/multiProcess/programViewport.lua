@@ -19,6 +19,7 @@ ProgramViewport.oldH = 0
 ProgramViewport.resizeQueued = false
 ---@type table
 ProgramViewport.focusKeys = nil
+ProgramViewport.queuedEvents = nil
 
 function ProgramViewport:init()
     control.init(self)
@@ -26,6 +27,7 @@ function ProgramViewport:init()
     self.oldW = self.w
     self.oldH = self.h
     self.focusKeys = {}
+    self.queuedEvents = {}
 end
 
 function ProgramViewport:draw()
@@ -50,6 +52,11 @@ function ProgramViewport:launchProgram(parentTerm, programPath, extraEnv, ...)
     self.parentTerm = parentTerm
     self.program = mp.launchProgram(parentTerm, programPath, extraEnv, function(data)
         if self:isValid() then
+            for i, v in ipairs(self.queuedEvents) do
+                self:unhandledEvent(v)
+            end
+            self.queuedEvents = {}
+
             return self:unhandledEvent(data)
         end
         return {true}
@@ -59,6 +66,14 @@ end
 function ProgramViewport:endProcess()
     self.terminated = true
     mp.endProcess(self.program)
+end
+
+function ProgramViewport:queueEvent(data)
+    if coroutine.status(self.program.co) == "suspended" then
+        self:unhandledEvent(data)
+    else
+        table.insert(self.queuedEvents, data)
+    end
 end
 
 local function drawChildren(viewport)

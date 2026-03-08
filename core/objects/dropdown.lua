@@ -1,5 +1,5 @@
 ---@return Dropdown
-return function(button, input, utils, optionNormalStyle, optionClickStyle)
+return function(button, input, utils, style)
 ---@class Dropdown : Button
 local Dropdown = button:newClass()
 Dropdown.__type = "Dropdown"
@@ -10,15 +10,11 @@ Dropdown.list = nil
 Dropdown.open = false
 Dropdown.dragSelectable = true
 Dropdown.shortcutSelection = nil
-Dropdown.optionNormalStyle = optionNormalStyle
-Dropdown.optionClickStyle = optionClickStyle
 Dropdown.optionShadow = true
 
 function Dropdown:init()
     button.init(self)
     self.list = self:addVContainer()
-    self.list.inheritStyle = false
-    self.list.style = self.normalStyle
     self.list.minW = 0
     self.list.minH = 0
     self.list.fitToChildrenW = true
@@ -29,7 +25,6 @@ function Dropdown:init()
     self.list.rendering = true
     self.list.topLevel = true
     self.list.y = self.h
-    self.list.inheritStyle = false
     self.list.visible = false
     self.list.propogateFocusUp = true
     self.list.dragSelectable = true
@@ -86,11 +81,9 @@ function Dropdown:addToList(text, clickable)
     else
         b = self.list:addControl()
     end
+    b.style = self.style
+    b.styleDown = self.styleDown
     b.shadow = false
-    b.inheritStyle = false
-    b.style = self.optionNormalStyle
-    b.normalStyle = self.optionNormalStyle
-    b.clickStyle = self.optionClickStyle
     b.text = text
     b.h = 1
     b.dragSelectable = true
@@ -109,9 +102,17 @@ function Dropdown:addToList(text, clickable)
     b.pressed = function(o)
         for i = 1, #o.parent.children do
             if o.parent.children[i] == o then
-                o.parent.parent:optionPressed(i)
+                self:optionPressed(i)
                 break
             end
+        end
+    end
+
+    b.getStyle = function (o)
+        if o.isClicked then
+            return self.styleDown
+        else
+            return self.style
         end
     end
 

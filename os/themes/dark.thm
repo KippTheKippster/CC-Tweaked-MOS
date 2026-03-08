@@ -1,0 +1,27 @@
+{
+  palette = {},
+  shadow = true,
+  fileColors = {
+    dirText = 8192,
+  },
+  mainColors = {
+    downBackground = 256,
+    focusText = 1,
+    focusBackground = 128,
+    text = 1,
+    background = 32768,
+    downText = 32768,
+  },
+  shadowColor = 128,
+  windowColors = {
+    exitBackground = 16384,
+    exitText = 1,
+    downText = 32768,
+    downBackground = 256,
+    focusBackground = 32768,
+    text = 256,
+    background = 32768,
+    focusText = 1,
+  },
+  backgroundColor = 128,
+}

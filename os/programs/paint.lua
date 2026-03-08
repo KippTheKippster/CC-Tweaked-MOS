@@ -421,7 +421,7 @@ selectionBox.h = 0
 selectionBox.visible = false
 selectionBox.mouseIgnore = true
 selectionBox.dragging = false
-selectionBox.style = engine.newStyle()
+selectionBox.style = selectionBox.style:unique()
 selectionBox.style.border = true
 selectionBox.style.background = false
 selectionBox.style.borderColor = colors.white
@@ -649,19 +649,19 @@ end
 local toolbar = engine.root:addVContainer()
 toolbar.w = 1
 
-local toolIcon = engine.Control:new()
-toolIcon.fitToText = false
-toolIcon.w = 1
-toolIcon.h = 1
-toolIcon.text = "Tool"
+local toolIcon = engine.Control:newClass()
+toolIcon._fitToText = false
+toolIcon._w = 1
+toolIcon._h = 1
+toolIcon._text = "Tool"
 toolIcon.dragSelectable = true
 toolIcon.tool = "Pen"
 
-local toolNormalStyle = engine.newStyle()
+local toolNormalStyle = engine.style:unique()
 toolNormalStyle.backgroundColor = colors.lightGray
 toolNormalStyle.textColor = colors.black
 
-local toolSelectStyle = engine.newStyle()
+local toolSelectStyle = engine.style:unique()
 toolSelectStyle.backgroundColor = colors.white
 toolSelectStyle.textColor = colors.black
 
@@ -722,8 +722,8 @@ colorL.w = 1
 colorR.w = 1
 colorL.h = 1
 colorR.h = 1
-colorL.style = engine.newStyle()
-colorR.style = engine.newStyle()
+colorL.style = colorL.style:unique()
+colorR.style = colorR.style:unique()
 colorL.style.backgroundColor = paint.colorL
 colorR.style.backgroundColor = paint.colorR
 
@@ -735,7 +735,7 @@ for i = 0, 16 do
     c.y = i
     c.text = ""
     c.dragSelectable = true
-    c.style = engine.newStyle()
+    c.style = c.style:unique()
     if i == 16 then
         c.style.backgroundColor = colors.gray
         c.style.textColor = colors.lightGray
@@ -757,7 +757,7 @@ for i = 0, 16 do
     end
 end
 
-local coordsStyle = engine.newStyle()
+local coordsStyle = engine.style:unique()
 coordsStyle.textColor = colors.white
 coordsStyle.backgroundColor = colors.black
 
@@ -766,14 +766,14 @@ coords.anchorH = coords.Anchor.DOWN
 coords.h = 1
 coords.style = coordsStyle
 
-local windowStyle = engine.newStyle()
+local windowStyle = engine.style:unique()
 windowStyle.backgroundColor = colors.white
 
-local editStyle = engine.newStyle()
+local editStyle = engine.style:unique()
 editStyle.backgroundColor = colors.gray
 editStyle.textColor = colors.white
 
-local editFocusStyle = editStyle:new()
+local editFocusStyle = editStyle:inherit()
 editFocusStyle.backgroundColor = colors.black
 
 local function createEditField(fieldName, text, parent)

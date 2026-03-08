@@ -16,7 +16,7 @@ local function object__index(o, key)
         end
 
         if rawget(mt, "class") == true then
-            error("Attempting to get property value of class", 3)
+            error("Attempting to get property value of class", 2)
         end
 
         return property.get(o)
@@ -103,9 +103,9 @@ end
 ---@return table
 function Object:new(...)
     local sMt = getmetatable(self)
-    --if not sMt.class then
-        --error("Attempting to instance a non class object!", 2)
-    --end
+    if not sMt.class then
+        error("Attempting to instance a non class object!", 2)
+    end
 
     local o, mt = new(self)
     local properties = {}

@@ -1,15 +1,14 @@
 ---@param control Control
 ---@param input Input
----@param editStyle Style
----@param editFocusStyle Style
+---@param style Style
 ---@return LineEdit
-return function(control, input, editStyle, editFocusStyle)
+return function(control, input, style, styleFocus)
 ---@class LineEdit : Control
 local LineEdit = control:newClass()
 LineEdit.__type = "LineEdit"
 
-LineEdit.normalStyle = editStyle
-LineEdit.focusStyle = editFocusStyle
+LineEdit.style = style
+LineEdit.styleFocus = styleFocus
 
 LineEdit._h = 1
 LineEdit._w = 12
@@ -18,7 +17,6 @@ LineEdit._text = ""
 LineEdit._cursorX = 0
 ---@type integer
 LineEdit.cursorX = nil
-LineEdit.inheritStyle = false
 LineEdit.clipText = true
 LineEdit.lineScroll = 0
 LineEdit._fitToText = false
@@ -35,11 +33,6 @@ LineEdit:defineProperty("cursorX", {
     end
 })
 
-function LineEdit:treeEntered()
-    control.treeEntered(self)
-    self.style = self.normalStyle
-end
-
 function LineEdit:render()
     local w = self.w - 1 - (self.marginL + self.marginR)
     if self.cursorX - self.offsetTextX > w then
@@ -55,10 +48,11 @@ function LineEdit:render()
 end
 
 function LineEdit:updateCursor()
+    local s = self:getStyle()
     --term.setCursorPos(self.gx + #self.text + self.cursorOffset + self.marginL + 1, self.gy + 1)
     term.setCursorPos(self.cursorX - self.offsetTextX + self.marginL + self.gx + 1, self.gy + 1)
-    term.setTextColor(self.style.textColor)
-    term.setBackgroundColor(self.style.backgroundColor)
+    term.setTextColor(s.textColor)
+    term.setBackgroundColor(s.backgroundColor)
     term.setCursorBlink(true)
 end
 
@@ -156,19 +150,28 @@ end
 
 function LineEdit:focusChanged()
     if self.focus then
-        self.style = self.focusStyle
         self.cursorX = #self.text
         self:grabCursor()
         self:grabInput()
     else
         self:textSubmitted()
         term.setCursorBlink(false)
-        self.style = self.normalStyle
         self:releaseCursor()
         self:releaseInput()
     end
+    self:queueDraw()
 end
 
+function LineEdit:getStyle()
+    if __mos then
+        __mos.log(self:inFocus())
+    end
+    if self:inFocus() then
+       return self.styleFocus
+    else
+        return self.style
+    end
+end
 
 
 function LineEdit:textSubmitted() end

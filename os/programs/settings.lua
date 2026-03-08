@@ -11,7 +11,7 @@ local engine = require(mos.mosDotPath .. ".core.engine")
 
 mos.applyTheme(engine)
 
-local seperatorStyle = engine.newStyle()
+local seperatorStyle = engine.style:inherit()
 seperatorStyle.textColor = colors.gray
 
 local scrollContainer = engine.root:addScrollContainer()
@@ -24,8 +24,8 @@ main.expandH = true
 main.marginL = 1
 main.marginR = 1
 
-local settingsButton = engine.Button:new()
-settingsButton.h = 1
+local settingsButton = engine.Button:newClass()
+settingsButton._h = 1
 
 local function addSeperator(text)
     local seperator = main:addControl()
@@ -92,7 +92,6 @@ local function addSettingsColor(text, defaultColor)
     picker.text = "[      ]"
     picker.anchorW = picker.Anchor.RIGHT
     picker.dragSelectable = true
-    picker.style = engine.newStyle()
     if defaultColor then
         picker.style.backgroundColor = defaultColor
     end
@@ -108,11 +107,6 @@ local function addSettingsLineEdit(text, editText)
     edit.w = 16
     edit.text = editText
     edit.dragSelectable = true
-    edit.normalStyle.backgroundColor = colors.gray
-    edit.normalStyle.textColor = colors.white
-    edit.focusStyle.backgroundColor = colors.lightGray
-    edit.focusStyle.textColor = colors.black
-    edit.style = edit.normalStyle
     edit.anchorW = edit.Anchor.RIGHT
     return edit
 end

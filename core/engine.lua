@@ -1,6 +1,6 @@
 local src = debug.getinfo(1, "S").source:sub(2)
 local corePath = fs.getDir(src)
-local coreDotPath = "." .. corePath:gsub("/", ".") 
+local coreDotPath = "." .. corePath:gsub("/", ".")
 
 ---@class Engine
 local engine = {}
@@ -24,40 +24,20 @@ engine.utils = utils
 engine.freeQueue = {}
 
 ---@type Style
-local style = require(coreDotPath .. ".style")(object)
-engine.normalStyle = style
+local style = require(coreDotPath .. ".style")
+engine.style = style
 
----@param base Style?
----@return Style
-local function newStyle(base)
-    if base then
-        return base:new()
-    end
-    return style:new()
-end
-engine.newStyle = newStyle
+local styleDown = style:inherit()
+styleDown.backgroundColor = colors.white
+styleDown.textColor = colors.orange
+engine.styleDown = styleDown
 
-engine.clickStyle = newStyle()
-engine.clickStyle.backgroundColor = colors.white
-engine.clickStyle.textColor = colors.orange
-
-engine.focusStyle = newStyle()
-engine.focusStyle.backgroundColor = colors.gray
-
-engine.editStyle = newStyle()
-engine.editStyle.backgroundColor = colors.gray
-
-engine.editFocusStyle = newStyle()
-engine.editFocusStyle.backgroundColor = colors.lightGray
-
-engine.dropdownOptionNormalStyle = newStyle()
-engine.dropdownOptionClickStyle = newStyle(engine.clickStyle)
-
-local windowStyle = newStyle()
-engine.windowNormalStyle = newStyle(windowStyle)
-engine.windowFocusStyle = newStyle(windowStyle)
-engine.windowClickStyle = newStyle()
-engine.windowExitButtonStyle = newStyle()
+local styleEdit = style:inherit()
+styleEdit.backgroundColor = colors.gray
+engine.styleEdit = styleEdit
+local styleEditFocus = style:inherit()
+styleEditFocus.backgroundColor = colors.lightGray
+engine.styleEditFocus = styleEditFocus
 
 --Objects
 local function requireObject(name, ...)
@@ -69,12 +49,11 @@ end
 ---@type Control
 engine.Control = requireObject("control", object, engine, style)
 ---@type Button
-engine.Button = requireObject("button", engine.Control, style, engine.clickStyle)
+engine.Button = requireObject("button", engine.Control, styleDown)
 ---@type Dropdown
-engine.Dropdown = requireObject("dropdown", engine.Button, input, utils, engine.dropdownOptionNormalStyle,
-    engine.dropdownOptionClickStyle)
+engine.Dropdown = requireObject("dropdown", engine.Button, input, utils, style)
 ---@type ColorPicker
-engine.ColorPicker = requireObject("colorPicker", engine.Control, input, style, utils)
+engine.ColorPicker = requireObject("colorPicker", engine.Control, input, style)
 ---@type Container
 engine.Container = requireObject("container", engine.Control)
 ---@type VContainer
@@ -86,10 +65,9 @@ engine.FlowContainer = requireObject("flowContainer", engine.Container)
 ---@type ScrollContainer
 engine.ScrollContainer = requireObject("scrollContainer", engine.Container, collision, input)
 ---@type WindowControl
-engine.WindowControl = requireObject("windowControl", engine.Control, engine.Button, engine.windowNormalStyle,
-    engine.windowFocusStyle, engine.windowClickStyle, engine.windowExitButtonStyle)
+engine.WindowControl = requireObject("windowControl", engine.Control, engine.Button, style, style)
 ---@type LineEdit
-engine.LineEdit = requireObject("lineEdit", engine.Control, engine.input, engine.editStyle, engine.editFocusStyle)
+engine.LineEdit = requireObject("lineEdit", engine.Control, engine.input, styleEdit, styleEditFocus)
 ---@type Icon
 engine.Icon = requireObject("icon", engine.Control)
 
