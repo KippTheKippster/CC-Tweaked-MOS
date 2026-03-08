@@ -7,23 +7,6 @@ local tProcesses = {}
 local endQueue = {}
 local sleepQueue = {}
 
-local file = fs.open("mp.txt", "w")
-
-local function log(...)
-    if true then
-        return
-    end
-    local line = ""
-    local data = table.pack(...)
-    for k, v in ipairs(data) do
-        line = line .. tostring(v) .. " "
-    end
-    line = line .. '\n'
-
-    file.write(line)
-    file.flush()
-end
-
 ---comment
 ---@param p Process
 ---@param data table
@@ -31,9 +14,6 @@ end
 function mp.resumeProcess(p, data)
     term.redirect(p.window)
     local status = table.pack(coroutine.resume(p.co, table.unpack(data)))
-    if data[1] ~= "timer" and p ~= tProcesses[1] then
-        log("Func: ", textutils.serialise(status), debug.traceback())
-    end
     term.redirect(p.parentTerm)
     return status
 end
@@ -49,6 +29,7 @@ end
 ---@param ... ...
 ---@return Process
 function mp.launchProcess(parentTerm, process, resume, x, y, w, h, ...)
+    local current = term.current()
     ---@class Process
     local p = {}
     local args = table.pack(...)
@@ -65,6 +46,7 @@ function mp.launchProcess(parentTerm, process, resume, x, y, w, h, ...)
     end
     p.dead = false
     table.insert(tProcesses, p)
+    term.redirect(current)
     return p
 end
 
