@@ -57,6 +57,7 @@ function ProgramViewport:launchProgram(parentTerm, programPath, extraEnv, ...)
 end
 
 function ProgramViewport:endProcess()
+    self.terminated = true
     mp.endProcess(self.program)
 end
 

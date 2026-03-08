@@ -1,5 +1,8 @@
+---@param control Control
+---@param button Button
+---@param style Style
 ---@return WindowControl
-return function(control, button, normalStyle, focusStyle, clickStyle, exitButtonStyle)
+return function(control, button, style, styleFocus)
 ---@class WindowControl : Control
 local WindowControl = control:newClass()
 WindowControl.__type = "WindowControl"
@@ -7,71 +10,45 @@ WindowControl.__type = "WindowControl"
 WindowControl.draggable = true
 WindowControl.clipText = true
 WindowControl._text = "Window"
-WindowControl.label = nil
 WindowControl.exitButton = nil
 WindowControl.scaleButton = nil
+WindowControl.minimizeButton = nil
 WindowControl._minW = 10
 WindowControl._minH = 4
-WindowControl.oldW = 0
-WindowControl.oldH = 0
+WindowControl.oldW = 10
+WindowControl.oldH = 4
 WindowControl.fullscreen = false
 WindowControl.closedSignal = WindowControl:createSignal()
 WindowControl.fullscreenChangedSignal = WindowControl:createSignal()
 WindowControl.shadow = true
+WindowControl._marginL = 2
 
-WindowControl.focusedStyle = focusStyle
-WindowControl.unfocusedStyle = normalStyle
-
-WindowControl:defineProperty('text', {
-    get = function(o)
-        if o.label == nil then
-            return o._text
-        else
-            return o.label.text
-        end
-    end,
-    set = function(o, value) 
-        if o.label == nil then
-            o._text = value
-        else
-            o.label._text = value
-            o._text = ""
-        end
-    end
-}, true)
+WindowControl.style = style
+WindowControl.styleFocus = styleFocus
 
 function WindowControl:init()
     control.init(self)
 
-    self.label = self:addControl()
-    self.label.x = 2
-    self.label.w = 1
-    self.label.h = 1
-    self.label.mouseIgnore = true
-    self.label.clipText = true
-    self.label.w = self.w - 2
-
-    self.exitButton = self:addButton()
-    self.exitButton.text = "x"
-    self.exitButton.x = self.w - 1
-    self.exitButton.w = 1
-    self.exitButton.h = 1
-    self.exitButton.propogateFocusUp = true
-    self.exitButton.normalStyle = normalStyle
-    self.exitButton.clickStyle = exitButtonStyle
-
-    self.exitButton.pressed = function(o)
+    local exit = self:addButton("x")
+    self.exitButton = exit
+    exit.inheritStyle = true
+    exit.x = self.w - 1
+    exit.w = 1
+    exit.h = 1
+    exit.dragSelectable = true
+    exit.propogateFocusUp = true
+    exit.pressed = function(o)
         self:close()
     end
 
-    self.scaleButton = control:new()
-    self:add(self.scaleButton)
-    self.scaleButton.w = 1
-    self.scaleButton.h = 1
-    self.scaleButton.text = "%"
-    self.scaleButton.propogateFocusUp = true
+    local scale = self:addControl("%")
+    self.scaleButton = scale
+    scale.inheritStyle = true
+    scale.w = 1
+    scale.h = 1
+    scale.propogateFocusUp = true
 
-    self.scaleButton.drag = function(o, b, x, y, rx, ry)
+    scale.drag = function(o, b, x, y, rx, ry)
         local gx = x + self.gx - 1
         local gy = y + self.gy - 1
 
@@ -94,9 +71,21 @@ function WindowControl:init()
         end
     end
 
-    self.scaleButton.doublePressed = function(o)
+    scale.doublePressed = function(o)
         o.parent:setFullscreen(true)
     end
+
+    local min = self:addButton("-")
+    self.minimizeButton = min
+    min.inheritStyle = true
+    min.w = 1
+    min.h = 1
+    min.propogateFocusUp = true
+    min.dragSelectable = true
+    min.pressed = function(o)
+        self.visible = false
+    end
+
 end
 
 function WindowControl:close()
@@ -116,6 +105,8 @@ function WindowControl:setFullscreen(fullscreen)
         local w, h = term.getSize()
         wi.gx = 0
         wi.gy = 0
+        wi.oldW = wi.w
+        wi.oldH = wi.h
         wi.w = w
         wi.h = h
         wi:toFront()
@@ -140,7 +131,7 @@ end
 
 function WindowControl:sizeChanged()
     self.exitButton.x = self.w - 1
-    self.label.w = self.w - 2
+    self.minimizeButton.x = self.w - 2
 end
 
 function WindowControl:refreshMinSize()
@@ -154,12 +145,18 @@ end
 
 function WindowControl:updateFocus()
     if self:inFocus() then
-        self.style = self.focusedStyle
         self:toFront()
         self:grabCursor()
     else
-        self.style = self.unfocusedStyle
         self:releaseCursor()
+    end
+end
+
+function WindowControl:getStyle()
+    if self:inFocus() then
+        return self.styleFocus
+    else
+        return self.style
     end
 end
 
