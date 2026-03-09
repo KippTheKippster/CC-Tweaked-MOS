@@ -61,7 +61,7 @@ Control._fitToText = true
 
 ---@type string
 Control.text = nil
-Control._text = "Control"
+Control._text = ""
 
 ---@type Style
 Control.style = style
@@ -288,11 +288,6 @@ function Control:init(text)
     end
 end
 
-function Control:treeEntered()
-    self.text = self._text
-    self:resize()
-end
-
 function Control:expandChildren()
     local w = self.w - (self.marginL + self.marginR)
     local h = self.h
@@ -352,8 +347,6 @@ Control:defineProperty('fitToText', {
         o:resize()
     end
 })
-
-
 
 Control:defineProperty('text', {
     get = function(o) return o._text end,
@@ -688,8 +681,8 @@ function Control:releaseInput()
     engine.input.setInputControl(nil)
 end
 
---Event Functions that should be overwritten
---function Control:treeEntered() end
+--Event Functions that can be overwritten
+function Control:treeEntered() end
 function Control:childrenChanged() end
 function Control:down(button, x, y) end
 function Control:up(button, x, y) end
