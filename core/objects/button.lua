@@ -3,7 +3,6 @@ return function(control, styleDown)
 ---@class Button : Control
 local Button = control:newClass()
 Button.__type = "Button"
-Button._text = "Button"
 Button.isClicked = false
 
 Button.styleDown = styleDown

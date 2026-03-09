@@ -74,12 +74,13 @@ local customTools = {}
 local currentWindow = nil
 
 --MOS
---Profile
+--User
 ---@class Theme
 local defaultTheme = {
     backgroundColor = colors.red,
     shadow = true,
-    shadowColor = colors.gray,
+    shadowTextColor = colors.black,
+    shadowBackgroundColor = colors.gray,
     toolbarColors = nil,
     mainColors = {
         text = colors.black,
@@ -105,17 +106,21 @@ local defaultTheme = {
     palette = {},
 }
 
----@class Profile
-local defaultProfile = {
+local function appendToMap(map, list, value)
+    for i, v in ipairs(list) do
+        map[v] = value
+    end
+end
+
+local fileAssociation = {}
+appendToMap(fileAssociation, {".txt", ".md", ".log", ".usr", ".json", ".settings"}, {program="/rom/programs/edit.lua"})
+fileAssociation[".nfp"] = {program="os/programs/paint.lua"}
+
+---@class User
+local defaultUser = {
     backgroundColor = nil,
     backgroundIcon = toOsPath("/textures/backgrounds/melvin.nfp"),
-    fileExceptions = {
-        [".nfp"] = {
-            program = "os/programs/paint.lua",
-            fullscreen = false
-        },
-        [".txt"] = { program = "/rom/programs/edit.lua" }
-    },
+    fileExceptions = {},
     theme = "",
     favorites = {
 
@@ -141,53 +146,55 @@ end
 
 ---comment
 ---@param file string?
-function mos.loadProfile(file)
-    file = file or "/.mosdata/profiles/profile.sav"
-    local profile = engine.utils.loadTable(file)
-    mos.profile = profile or {}
-    validateTable(mos.profile, defaultProfile)
-    if profile == nil then
-        mos.saveProfile()
-    end
+---@return User, boolean
+function mos.loadUser(file)
+    file = file or "/.mosdata/users/user.usr"
+    local user = engine.utils.loadTable(file)
+    local loaded = user ~= nil
+    user = user or {}
+    validateTable(user, defaultUser)
+    return user, loaded
 end
 
 ---comment
 ---@param file string?
-function mos.saveProfile(file)
-    file = file or "/.mosdata/profiles/profile.sav"
-    engine.utils.saveTable(mos.profile, file)
+---@param user User?
+function mos.saveUser(file, user)
+    file = file or "/.mosdata/users/user.usr"
+    user = user or mos.user
+    engine.utils.saveTable(user, file)
 end
 
 ---comment
 ---@param file string
----@param profile Profile?
+---@param user User?
 ---@return boolean
-function mos.isFileFavorite(file, profile)
-    profile = profile or mos.profile
-    return profile.favorites[file] ~= nil
+function mos.isFileFavorite(file, user)
+    user = user or mos.user
+    return user.favorites[file] ~= nil
 end
 
 ---comment
 ---@param file string
 ---@param settings table?
----@param profile Profile?
-function mos.addFileFavorite(file, settings, profile)
-    profile = profile or mos.profile
-    if profile.favorites[file] ~= nil then return end
+---@param user User?
+function mos.addFileFavorite(file, settings, user)
+    user = user or mos.user
+    if user.favorites[file] ~= nil then return end
     settings = settings or { name = fs.getName(file) }
-    profile.favorites[file] = settings
-    if profile == mos.profile then
+    user.favorites[file] = settings
+    if user == mos.user then
         os.queueEvent("mos_favorite_add", file)
     end
 end
 
 ---comment
 ---@param file string
----@param profile Profile?
-function mos.removeFileFavorite(file, profile)
-    profile = profile or mos.profile
-    profile.favorites[file] = nil
-    if profile == mos.profile then
+---@param user User?
+function mos.removeFileFavorite(file, user)
+    user = user or mos.user
+    user.favorites[file] = nil
+    if user == mos.user then
         os.queueEvent("mos_favorite_remove", file)
     end
 end
@@ -200,7 +207,7 @@ function mos.loadTheme(file)
         mos.theme = defaultTheme
     else
         mos.theme = theme
-        mos.profile.theme = file
+        mos.user.theme = file
         validateTable(theme, defaultTheme)
     end
 
@@ -231,7 +238,7 @@ function mos.refreshTheme()
     end
 
     mos.style = mos.applyTheme(engine)
-    engine.backgroundColor = mos.profile.backgroundColor or mos.theme.backgroundColor
+    engine.backgroundColor = mos.user.backgroundColor or mos.theme.backgroundColor
     engine.root:queueDraw()
     os.queueEvent("mos_refresh_theme")
 end
@@ -246,7 +253,8 @@ function mos.applyTheme(targetEngine, theme)
     theme = theme or mos.theme
     --Background
     e.backgroundColor = theme.mainColors.background
-    theme.shadowColor = theme.shadowColor or colors.black
+    theme.shadowTextColor = theme.shadowTextColor or colors.black
+    theme.shadowBackgroundColor = theme.shadowBackgroundColor or colors.black
 
     --Toolbar
     local mainColors = theme.mainColors
@@ -255,7 +263,7 @@ function mos.applyTheme(targetEngine, theme)
     local styleDown = e.styleDown
 
     local styleWindow = e.style:inherit()
-    local styleWindowFocus = e.style:inherit()
+    local styleWindowFocus = styleWindow:inherit()
 
     local styleToolbar = style:inherit()
     local styleToolbarDown = styleDown:inherit()
@@ -283,8 +291,9 @@ function mos.applyTheme(targetEngine, theme)
 
     style.textColor = mainColors.text
     style.backgroundColor = mainColors.background
-    style.shadowColor = theme.shadowColor
-    style.shadowOffsetU = 1
+    style.shadowTextColor = theme.shadowTextColor
+    style.shadowBackgroundColor = theme.shadowBackgroundColor
+    style.shadowOffsetU = 0
 
     styleDown.textColor = mainColors.downText
     styleDown.backgroundColor = mainColors.downBackground
@@ -295,14 +304,13 @@ function mos.applyTheme(targetEngine, theme)
     local windowColors = theme.windowColors
 
     programWindow.shadow = theme.shadow
-    styleWindow.shadowColor = theme.shadowColor
-    styleWindow.shadowOffsetU = 0
+    styleWindow.shadowTextColor = theme.shadowColor
+    styleWindow.shadowOffsetU = -1
     styleWindow.backgroundColor = windowColors.background
     styleWindow.textColor = windowColors.text
 
     styleWindowFocus.backgroundColor = windowColors.focusBackground
     styleWindowFocus.textColor = windowColors.focusText
-    styleWindowFocus.shadowOffsetU = 0
 
     local styles = {
         main = style,
@@ -319,19 +327,20 @@ function mos.applyTheme(targetEngine, theme)
 end
 
 mos.theme = defaultTheme
----@type Profile
-mos.profile = nil
+---@type User
+mos.user = nil
 
-mos.loadProfile()
-mos.loadTheme(mos.profile.theme)
+local userLoaded
+mos.user, userLoaded = mos.loadUser()
+mos.loadTheme(mos.user.theme)
 engine.utils.saveTable(defaultTheme, toOsPath("/themes/default.thm"))
 
 --Objects
 --Background
 local backgroundIcon = engine.root:addIcon()
 backgroundIcon.text = ""
-if mos.profile.backgroundIcon ~= "" and fs.exists(mos.profile.backgroundIcon or "") then
-    backgroundIcon.texture = paintutils.loadImage(mos.profile.backgroundIcon)
+if mos.user.backgroundIcon ~= "" and fs.exists(mos.user.backgroundIcon or "") then
+    backgroundIcon.texture = paintutils.loadImage(mos.user.backgroundIcon)
 end
 backgroundIcon.anchorW = backgroundIcon.Anchor.CENTER
 backgroundIcon.anchorH = backgroundIcon.Anchor.CENTER
@@ -401,12 +410,12 @@ function mos.refreshMosDropdown()
     mosDropdown:addToList("Shell")
 
     local l = -1
-    for k, v in pairs(mos.profile.favorites) do
+    for k, v in pairs(mos.user.favorites) do
         l = #k
     end
     if l > -1 then
         mosDropdown:addToList("-------------", false)
-        for k, v in pairs(mos.profile.favorites) do
+        for k, v in pairs(mos.user.favorites) do
             local option = mosDropdown:addToList(v.name .. " ")
             option.pressed = function(o)
                 mos.openWithModifier(k, mos.getInputFileOpenModifier())
@@ -671,9 +680,12 @@ end
 function mos.openFile(path, ...)
     local x, y, w, h = nextWindowTransform()
     local file = fs.getName(path)
-    for k, v in pairs(mos.profile.fileExceptions) do
-        local suffix = k
-        if file:sub(-#suffix) == suffix then
+    local i = file:reverse():find(".", 1, true)
+    if i then
+        local suffix = file:sub(#file + 1 - i)
+        local v = mos.user.fileExceptions[file] or mos.user.fileExceptions[suffix] or fileAssociation[suffix]
+        --mos.log(suffix, textutils.serialise(fileAssociation), v)
+        if v then
             local program = path
             if v.program then
                 if v.program:sub(1, 1) == "/" then
@@ -682,12 +694,12 @@ function mos.openFile(path, ...)
                     program = toMosPath(v.program)
                 end
             end
-
+    
             if v.fullscreen then
                 x, y = 0, 0
                 w, h = engine.root.w, engine.root.h
             end
-
+    
             local wi = mos.launchProgram(file, program, x, y, w, h, path, ...)
             if v.fullscreen then
                 wi:setFullscreen(true)
@@ -896,10 +908,12 @@ engine.root:add(mos.quickSearch)
 mos.quickSearch.y = 1
 
 mos.log("Launching MOS")
+if not userLoaded then
+    mos.popupError("Failed to load user!", "Using default.")
+end
+
 local err = engine.startMultiProgram(mp)
 mos.log("MOS Terminated")
-
-mos.saveProfile()
 
 if err == nil or err == "Terminated" then
     term.setBackgroundColor(colors.black)

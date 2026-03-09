@@ -1,5 +1,7 @@
 Enviroment isn't sent if a program is run through edit mode
 Rename render to draw, add isDrawAllowed, and rename rendering variable
+
+Rework resize to not use expandChildren
     
 Margin:
     Should margin affect min size?

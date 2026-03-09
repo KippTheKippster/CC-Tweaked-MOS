@@ -13,7 +13,7 @@ ProgramViewport.mouseIgnore = false
 ProgramViewport.program = nil
 ProgramViewport.parentTerm = nil
 ProgramViewport.terminated = false
-ProgramViewport.skipEvent = false
+ProgramViewport.skipInput = false
 ProgramViewport.oldW = 0
 ProgramViewport.oldH = 0
 ProgramViewport.resizeQueued = false
@@ -96,10 +96,10 @@ end
 ---@param data table
 function ProgramViewport:unhandledEvent(data)
     if self.program == nil then return { true } end
-    local event = data[1]
 
-    if self.skipEvent == true and event ~= "timer" then -- TODO add a more robust way of skipping input
-        self.skipEvent = false
+    local event = data[1]
+    if self.skipInput == true and event ~= "timer" and event ~= "mos_window_focus" then -- TODO add a more robust way of skipping input
+        self.skipInput = false
         return { true }
     end
 
@@ -136,31 +136,29 @@ function ProgramViewport:unhandledEvent(data)
         end
     elseif event == "key_up" then
         if self.parent:inFocus() == false then return { true } end
-
-
-        if self.terminated == true then
-            if self.focusKeys[data[2]] == true and self.parent:inFocus() then
-                self.parent:close()
-            end
-        end
-
         self.focusKeys[data[2]] = nil
         args = data
     end
 
     if self.terminated == true then
+        if event == "key" and self.parent:inFocus() then
+            self.parent:close()
+        end
+
         return { true }
     end
 
     local result = resumeProcess(self, args)
 
     if coroutine.status(self.program.co) == "dead" and self.terminated == false then
+        self:queueDraw()
+
         self.terminated = true
         term.redirect(self.program.window)
         term.setBackgroundColor(colors.black)
         term.setTextColor(colors.white)
-        print("Press any key to close window.")
-
+        term.setCursorPos(1, self.h)
+        term.write("Press any key to close window.")
         term.redirect(self.parentTerm)
         return { true }
     end

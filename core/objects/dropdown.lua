@@ -4,7 +4,6 @@ return function(button, input, utils, style)
 local Dropdown = button:newClass()
 Dropdown.__type = "Dropdown"
 
-Dropdown._text = "Drop-down"
 Dropdown._h = 1
 Dropdown.list = nil
 Dropdown.open = false
@@ -12,8 +11,8 @@ Dropdown.dragSelectable = true
 Dropdown.shortcutSelection = nil
 Dropdown.optionShadow = true
 
-function Dropdown:init()
-    button.init(self)
+function Dropdown:init(text)
+    button.init(self, text)
     self.list = self:addVContainer()
     self.list.minW = 0
     self.list.minH = 0

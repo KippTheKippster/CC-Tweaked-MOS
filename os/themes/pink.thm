@@ -21,7 +21,8 @@
     fullscreenBackground = 64,
     fullscreenDownBackground = 1,
   },
-  shadowColor = 64,
+  shadowTextColor = 4,
+  shadowBackgroundColor = 64,
   windowColors = {
     focusBackground = 4,
     text = 128,

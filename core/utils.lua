@@ -1,5 +1,5 @@
 local function contains(t, v)
-    for _, x in pairs(t) do
+    for _, x in ipairs(t) do
         if v == x then
             return true
         end
@@ -20,36 +20,6 @@ local function find(t, v)
     return nil
 end
 
-local function combine(first, second)
-	for k,v in pairs(second) do
-		table.insert(first, v)
-	end
-end
-
-local function move(tb, object, position)
-	for i = 1, #tb do
-		if tb[i] == object then
-			tb[i] = tb[i + position] --sets the current position to the object that is occupying the wanted position
-			tb[i + position] = object --sets the wanted position to the wanted object
-		end
-	end
-end
-
---[[
-local function split(s, c)
-    local strings = {}
-    local start = 1
-    for i = 1, #s do
-        if s:sub(i, i) == c or i == #s then
-            local str = s:sub(start, i)
-			str = str:gsub(' ', '')
-            table.insert(strings, str)
-            start = i
-        end
-    end
-    return strings
-end
-]]--
 local function split(inputstr, sep)
   if sep == nil then
     sep = "%s"
@@ -59,42 +29,6 @@ local function split(inputstr, sep)
     table.insert(t, str)
   end
   return t
-end
-
-
-local function printTable(table, recursive, prefix)
-	if table == nil then error("Atempting to print a nil value", 2) end
-	if prefix == nil then prefix = "" end
-	print(prefix .. "{")
-	for k, v in pairs(table) do
-		print(prefix .. tostring(k) .. " = " .. tostring(v))
-		if recursive and type(v) == "table" then 
-			printTable(v, prefix .. "   ")
-		end
-	end
-	print(prefix .. "}")
-end
-
-local function clamp(value, min, max)
-    if max == nil or min == nil then
-        error("Attempting to clamp nil value", 2)
-    end
-    if value > max then
-        return max
-    elseif value < min then
-        return min
-    else
-        return value
-    end
-end
-
-local function getDir(value)
-    value = clamp(value, -1, 1)
-    return value
-end
-
-local function capitaliseFirst(text)
-	return (text:gsub("^%l", string.upper))
 end
 
 local function push(table, object, dir)
@@ -143,21 +77,9 @@ local function loadTable(file)
     if f == nil then return nil end
     local data = f.readAll()
     f.close()
-    return textutils.unserialise(data)
+    return textutils.unserialize(data)
 end
 
--- https://stackoverflow.com/questions/640642/how-do-you-copy-a-lua-table-by-value
-local function deepCopy(from, to)
-    if type(from) ~= 'table' then return end
-    if type(to) ~= 'table' then return end
-    for k, v in pairs(from) do
-		if type(v) == "table" then
-			--dasdaskopdas
-		else
-			to[k] = v
-		end
-	end
-end
 
 
 ---@class Utils
@@ -165,19 +87,12 @@ local Utils = {
 	contains = contains,
     find = find,
 	split = split,
-	combine = combine,
-	printTable = printTable,
-	clamp = clamp,
-	getDir = getDir,
-	capitaliseFirst = capitaliseFirst,
-	move = move,
 	pushUp = pushUp,
 	pushDown = pushDown,
 	pushTop = pushTop,
 	pushBottom = pushBottom,
 	saveTable = saveTable,
 	loadTable = loadTable,
-	deepCopy = deepCopy,
 }
 
 ---@type Utils

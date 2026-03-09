@@ -14,9 +14,24 @@ mos.applyTheme(engine)
 local seperatorStyle = engine.style:inherit()
 seperatorStyle.textColor = colors.gray
 
-local scrollContainer = engine.root:addScrollContainer()
+local root = engine.root:addVContainer()
+root.expandW = true
+root.expandH = true
+
+local scrollContainer = root:addScrollContainer()
 scrollContainer.expandW = true
 scrollContainer.expandH = true
+
+local bottom = root:addHContainer()
+bottom.expandW = true
+
+local bottomSpacer = bottom:addControl()
+bottomSpacer.expandW = true
+
+local applyButton = bottom:addButton("\16Save")
+function applyButton:pressed()
+    mos.saveUser()
+end
 
 local main = scrollContainer:addVContainer()
 main.expandW = true
@@ -162,13 +177,13 @@ end
 local changeBackground = addSettingsButton("Background Image", "[Browse]")
 
 local imageReset = addReset(changeBackground)
-imageReset.visible = mos.profile.backgroundIcon ~= nil and mos.profile.backgroundIcon ~= ""
+imageReset.visible = mos.user.backgroundIcon ~= nil and mos.user.backgroundIcon ~= ""
 
 function changeBackground:pressed()
     fileExplorer = mos.openFileDialogue("Choose .nfp", {
         callback = function (path)
             mos.backgroundIcon.texture = paintutils.loadImage(path)
-            mos.profile.backgroundIcon = path
+            mos.user.backgroundIcon = path
             imageReset.visible = true
             fileExplorer:close()
         end,
@@ -177,24 +192,24 @@ function changeBackground:pressed()
 end
 
 function imageReset:pressed()
-    mos.profile.backgroundIcon = nil
+    mos.user.backgroundIcon = nil
     mos.backgroundIcon.texture = nil
-    mos.profile.backgroundIcon = ""
+    mos.user.backgroundIcon = ""
     imageReset.visible = false
 end
 
-local picker = addSettingsColor("Background Color", mos.profile.backgroundColor or mos.theme.backgroundColor)
+local picker = addSettingsColor("Background Color", mos.user.backgroundColor or mos.theme.backgroundColor)
 
 local colorReset = addReset(picker)
 
-colorReset.visible = mos.profile.backgroundColor ~= nil
-if mos.profile.backgroundColor ~= nil then
-    picker.style.backgroundColor = mos.profile.backgroundColor
+colorReset.visible = mos.user.backgroundColor ~= nil
+if mos.user.backgroundColor ~= nil then
+    picker.style.backgroundColor = mos.user.backgroundColor
 end
 
 colorReset.pressed = function (o)
-    ---@type Profile
-    mos.profile.backgroundColor = nil
+    ---@type User
+    mos.user.backgroundColor = nil
     mos.engine.backgroundColor = mos.theme.backgroundColor
     mos.refreshTheme()
     o.visible = false
@@ -203,7 +218,7 @@ end
 
 
 function picker:colorClicked(color)
-    mos.profile.backgroundColor = color
+    mos.user.backgroundColor = color
     mos.engine.backgroundColor = color
     mos.engine.root:queueDraw()
     colorReset.visible = true
@@ -213,14 +228,14 @@ addSeperator("-File Explorer-")
 
 local dirColorPicker = addSettingsColor("Dir Color", mos.theme.fileColors.dirText)
 local dirColorReset = addReset(dirColorPicker)
-dirColorReset.visible = mos.profile.dirColor ~= nil
-if mos.profile.dirColor ~= nil then
-    dirColorPicker.style.backgroundColor = mos.profile.dirColor
+dirColorReset.visible = mos.user.dirColor ~= nil
+if mos.user.dirColor ~= nil then
+    dirColorPicker.style.backgroundColor = mos.user.dirColor
 end
 
 dirColorReset.pressed = function (o)
-    ---@type Profile
-    mos.profile.dirColor = nil
+    ---@type User
+    mos.user.dirColor = nil
     --mos.engine.backgroundColor = mos.theme.backgroundColor
     mos.refreshTheme()
     o.visible = false
@@ -228,20 +243,20 @@ dirColorReset.pressed = function (o)
 end
 
 function dirColorPicker:colorClicked(color)
-    mos.profile.dirColor = color
+    mos.user.dirColor = color
     mos.engine.root:queueDraw()
     dirColorReset.visible = true
 end
 
 local dotFiles = addSettingsButton("Show dot Files", "[ ]")
-if mos.profile.dirShowDot then
+if mos.user.dirShowDot then
     dotFiles.text = "[x]"
 end
 
 dotFiles.pressed = function (o)
-    mos.profile.dirShowDot = mos.profile.dirShowDot == false
+    mos.user.dirShowDot = mos.user.dirShowDot == false
     os.queueEvent("mos_refresh_files")
-    if mos.profile.dirShowDot then
+    if mos.user.dirShowDot then
         o.text = "[x]"
     else
         o.text = "[ ]"
@@ -250,14 +265,14 @@ end
 
 
 local mosFiles = addSettingsButton("Show mos Files", "[ ]")
-if mos.profile.dirShowMos then
+if mos.user.dirShowMos then
     mosFiles.text = "[x]"
 end
 
 mosFiles.pressed = function (o)
-    mos.profile.dirShowMos = mos.profile.dirShowMos == false
+    mos.user.dirShowMos = mos.user.dirShowMos == false
     os.queueEvent("mos_refresh_files")
-    if mos.profile.dirShowMos then
+    if mos.user.dirShowMos then
         o.text = "[x]"
     else
         o.text = "[ ]"
@@ -266,14 +281,14 @@ end
 
 
 local romFiles = addSettingsButton("Show rom Files", "[ ]")
-if mos.profile.dirShowRom then
+if mos.user.dirShowRom then
     romFiles.text = "[x]"
 end
 
 romFiles.pressed = function (o)
-    mos.profile.dirShowRom = mos.profile.dirShowRom == false
+    mos.user.dirShowRom = mos.user.dirShowRom == false
     os.queueEvent("mos_refresh_files")
-    if mos.profile.dirShowRom then
+    if mos.user.dirShowRom then
         o.text = "[x]"
     else
         o.text = "[ ]"
@@ -281,14 +296,14 @@ romFiles.pressed = function (o)
 end
 
 local leftHeart = addSettingsButton("Heart on Left Side", "[ ]")
-if mos.profile.dirLeftHeart then
+if mos.user.dirLeftHeart then
     leftHeart.text = "[x]"
 end
 
 leftHeart.pressed = function (o)
-    mos.profile.dirLeftHeart = mos.profile.dirLeftHeart == false
+    mos.user.dirLeftHeart = mos.user.dirLeftHeart == false
     --os.queueEvent("mos_refresh_files")
-    if mos.profile.dirLeftHeart then
+    if mos.user.dirLeftHeart then
         o.text = "[x]"
     else
         o.text = "[ ]"

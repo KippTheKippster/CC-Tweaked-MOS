@@ -9,7 +9,6 @@ WindowControl.__type = "WindowControl"
 
 WindowControl.draggable = true
 WindowControl.clipText = true
-WindowControl._text = "Window"
 WindowControl.exitButton = nil
 WindowControl.scaleButton = nil
 WindowControl.minimizeButton = nil
@@ -26,8 +25,8 @@ WindowControl._marginL = 2
 WindowControl.style = style
 WindowControl.styleFocus = styleFocus
 
-function WindowControl:init()
-    control.init(self)
+function WindowControl:init(text)
+    control.init(self, text)
 
     local exit = self:addButton("x")
     self.exitButton = exit

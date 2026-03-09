@@ -465,9 +465,25 @@ function Control:drawShadow(style)
     if self.w == 0 or self.h == 0 then return end
     local s = style or self:getStyle()
 
-    term.setTextColor(colors.black)
-    term.setBackgroundColor(s.shadowColor)
+    term.setTextColor(s.shadowTextColor)
+    term.setBackgroundColor(s.shadowBackgroundColor)
 
+    for i = 1 - s.shadowOffsetU, self.h do
+        term.setCursorPos(self.gx + self.w + 1, self.gy + i)
+        term.write(string.char(127))
+    end
+
+    for i = 1 - s.shadowOffsetU, self.h do
+        term.setCursorPos(self.gx, self.gy + i)
+        term.write(string.char(127))
+    end
+
+    for i = 0, self.w + 1 do
+        term.setCursorPos(self.gx + i, self.gy + self.h + 1)
+        term.write(string.char(127))
+    end
+
+    --[[
     for i = 2 - s.shadowOffsetU, self.h + 1 + s.shadowOffsetD do
         term.setCursorPos(self.gx + self.w + 1, self.gy + i)
         term.write(string.char(127))
@@ -477,6 +493,7 @@ function Control:drawShadow(style)
         term.setCursorPos(self.gx + i, self.gy + self.h + 1)
         term.write(string.char(127))
     end
+    ]]--
 end
 
 ---@param left number
@@ -764,9 +781,10 @@ function Control:addVContainer()
     return addControl(self, engine.VContainer)
 end
 
+---@param text string?
 ---@return WindowControl
-function Control:addWindowControl()
-    return addControl(self, engine.WindowControl)
+function Control:addWindowControl(text)
+    return addControl(self, engine.WindowControl, text)
 end
 
 return Control

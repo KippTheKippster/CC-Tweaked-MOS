@@ -13,7 +13,6 @@ LineEdit.styleFocus = styleFocus
 LineEdit._h = 1
 LineEdit._w = 12
 LineEdit._minH = 1
-LineEdit._text = ""
 LineEdit._cursorX = 0
 ---@type integer
 LineEdit.cursorX = nil
@@ -65,7 +64,7 @@ function LineEdit:addText(text, x)
 end
 
 function LineEdit:removeText(from, to)
-    if to == 0 then
+    if from < 0 or to == 0 then
         return
     end
 

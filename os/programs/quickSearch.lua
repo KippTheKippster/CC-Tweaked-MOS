@@ -15,6 +15,10 @@ function qs:init()
     qs.x = 2
 end
 
+function qs:treeEntered()
+    self:resize()
+end
+
 qs.programs = {}
 
 table.insert(qs.programs, { name = "File Explorer", path = "/mos/os/programs/files.lua" })
@@ -136,7 +140,7 @@ function qs:refreshList ()
         end
 
         local continue = true
-        if mos.profile.dirShowDot == false and program.name:sub(0, 1) == "." then
+        if mos.user.dirShowDot == false and program.name:sub(0, 1) == "." then
             continue = false
         end
 

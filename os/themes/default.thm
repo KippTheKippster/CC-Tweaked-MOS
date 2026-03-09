@@ -1,9 +1,5 @@
 {
-  palette = {},
   shadow = true,
-  fileColors = {
-    dirText = 2048,
-  },
   mainColors = {
     downText = 32768,
     focusText = 32768,
@@ -12,7 +8,6 @@
     downBackground = 8,
     background = 1,
   },
-  shadowColor = 128,
   windowColors = {
     downText = 32768,
     exitText = 32768,
@@ -23,5 +18,11 @@
     downBackground = 1,
     exitBackground = 16384,
   },
+  palette = {},
+  fileColors = {
+    dirText = 2048,
+  },
+  shadowBackgroundColor = 128,
   backgroundColor = 16384,
+  shadowTextColor = 32768,
 }

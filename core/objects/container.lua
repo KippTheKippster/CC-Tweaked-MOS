@@ -5,7 +5,6 @@ local Container = control:newClass()
 Container.__type = "Container"
 
 Container.mouseIgnore = false
-Container._text = ""
 Container._visible = true
 Container.rendering = false
 Container.sortOnResize = true

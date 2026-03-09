@@ -42,7 +42,7 @@ end
 
 if mos then
     mos.applyTheme(engine)
-    dirColor = mos.profile.dirColor or mos.theme.fileColors.dirText
+    dirColor = mos.user.dirColor or mos.theme.fileColors.dirText
 end
 
 local fileStyle = engine.style:unique()
@@ -181,7 +181,7 @@ function FileButton:render()
     end
 
     if mos.isFileFavorite(self.path) then
-        if mos.profile.dirLeftHeart then
+        if mos.user.dirLeftHeart then
             selfText = string.char(3) .. " " .. selfText
         else
             text = text .. " " .. string.char(3)
@@ -352,21 +352,21 @@ end
 
 function fe.list(dir)
     local files = fs.list(dir)
-    if mos.profile.dirShowDot and mos.profile.dirShowMos and mos.profile.dirShowRom then
+    if mos.user.dirShowDot and mos.user.dirShowMos and mos.user.dirShowRom then
         return files
     end
 
     local valid = function(file)
-        if not mos.profile.dirShowDot and file:sub(1, 1) == "." then
+        if not mos.user.dirShowDot and file:sub(1, 1) == "." then
             return false
         end
 
         local path = fs.combine(dir, file)
-        if not mos.profile.dirShowMos and path == mos.toMosPath("") or path == ".mosdata" then
+        if not mos.user.dirShowMos and path == mos.toMosPath("") or path == ".mosdata" then
             return false
         end
 
-        if not mos.profile.dirShowRom and path == "rom" then
+        if not mos.user.dirShowRom and path == "rom" then
             return false
         end
 
