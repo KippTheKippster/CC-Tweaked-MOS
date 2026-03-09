@@ -31,27 +31,14 @@ fe.mountedDisks = {}
 fe.diskTools = {}
 fe.toolsBound = false
 
----comment
----@param path string
----@param modifier FileOpenModifier
-fe.openFileCallback = function(path, modifier, ...)
-    if mos then
-        if modifier == mos.FileOpenModifier.EDIT then
-            mos.editProgram(path)
-        elseif modifier == mos.FileOpenModifier.ARGS then
-            mos.openProgramWithArgs(path)
-        else
-            mos.openProgram(path, ...)
-        end
-    end
-end
-
-if type(args[1]) == "function" then
-    fe.openFileCallback = args[1]
-end
-
-local settings = args[2] or {}
+local settings = args[1] or {}
 local dirColor = colors.blue
+
+fe.openFileCallback = mos.openWithModifier
+if type(settings.callback) == "function" then
+    fe.openFileCallback = settings.callback
+end
+
 
 if mos then
     mos.applyTheme(engine)
@@ -133,12 +120,13 @@ if settings.saveMode then
 
     saveContainer.saveEdit = saveContainer:addLineEdit()
     saveContainer.saveEdit.expandW = true
-    saveContainer.saveEdit.text = args[3]
+    --saveContainer.saveEdit.text = args[3]
+    saveContainer.saveEdit:grabFocus()
 
     saveContainer.saveButton = saveContainer:addButton()
     saveContainer.saveButton.text = "Save"
     saveContainer.saveButton.pressed = function()
-        fe.openFile(fe.nameToPath(saveContainer.saveEdit.text), mos.getFileOpenModifierInput())
+        fe.openFile(fe.nameToPath(saveContainer.saveEdit.text), mos.getInputFileOpenModifier())
     end
 
     main:add(saveContainer)
@@ -303,7 +291,7 @@ function fe.newFileButton(name)
     else
         fileButton.style = fileStyle
         fileButton.doublePressed = function(o)
-            fe.openFile(path, mos.getFileOpenModifierInput())
+            fe.openFile(path, mos.getInputFileOpenModifier())
         end
     end
     fileButton.h = 1
@@ -398,8 +386,13 @@ end
 ---comment
 ---@param path string
 function fe.openDir(path)
+    term.setBackgroundColor(colors.black)
     if not fs.exists(path) then
-        error("Attemting to open non existent dir '" .. path .. "'")
+        error("Attemting to open non existent dir '" .. path .. "'", 0)
+    end
+
+    if not fs.isDir(path) then
+        error("Not a directory '" .. path .. "'", 0)
     end
 
     fe.currentPath = path
@@ -456,6 +449,8 @@ function fe.openDir(path)
             fe.selectFileButton(b, true)
         end
     end
+
+    fileContainer:expandChildren() -- Hack, add replaceChildren instead
 
     fe.startFile = ""
 end
@@ -645,7 +640,7 @@ function fe.newAudioDropdown(path)
         elseif text == "Stop Audio" then
             disk.stopAudio(path)
         elseif text == "Info" then
-            mos.openProgram(mos.toOsPath("/programs/diskInfo.lua"), path).text = "Disk Info '" .. title .. "'"
+            mos.openFile(mos.toOsPath("/programs/diskInfo.lua"), path).text = "Disk Info '" .. title .. "'"
         elseif text == "Eject" then
             disk.eject(path)
         end
@@ -702,7 +697,7 @@ function fe.newDriveDropdown(path)
             end, disk.getLabel(path)).text = "Set Label"
             return
         elseif text == "Info" then
-            mos.openProgram(mos.toOsPath("/programs/diskInfo.lua"), path).text = "Disk Info '" .. title .. "'"
+            mos.openFile(mos.toOsPath("/programs/diskInfo.lua"), path).text = "Disk Info '" .. title .. "'"
             return
         elseif text == "Eject" then
             fe.eject(path)
@@ -912,6 +907,9 @@ local function input(data)
             if searchbar.focus then
                 searchbar:releaseFocus()
             end
+        elseif k == keys.enter and settings.saveMode and saveContainer and saveContainer.saveEdit and saveContainer.saveEdit:inFocus() then -- Long long man
+            fe.openFileCallback(fe.nameToPath(saveContainer.saveEdit.text), 0)
+            return
         end
     end
 
@@ -992,7 +990,7 @@ local function input(data)
                 if fs.isDir(focus.path) then
                     fe.openDir(focus.path)
                 else
-                    fe.openFile(focus.path, mos.getFileOpenModifierInput())
+                    fe.openFile(focus.path, mos.getInputFileOpenModifier())
                 end
             end
         elseif data[2] == keys.right then
@@ -1031,8 +1029,8 @@ end
 
 engine.input.addRawEventListener(rawEvent)
 
-if settings.dir then
-    fe.currentPath = settings.dir
+if settings.start then
+    fe.currentPath = settings.start
 end
 
 fe.openDir(fe.currentPath)

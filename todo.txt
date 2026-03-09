@@ -1,12 +1,5 @@
-If a window opens another window something strange happens with its term (see event_test.lua) (some kind of multishellWrapper issue)
 Enviroment isn't sent if a program is run through edit mode
-V/HContainer does not respect margin
-When setting 'globalX' then 'x' wont be updated 
-MarginR should update transform
-LineEdit does not respect margin
 Rename render to draw, add isDrawAllowed, and rename rendering variable
-Files auto scroll
-If files gets to small the color bleeds
     
 Margin:
     Should margin affect min size?

@@ -148,23 +148,22 @@ function ProgramViewport:unhandledEvent(data)
         args = data
     end
 
-    if coroutine.status(self.program.co) == "dead" and self.terminated == false then
-        term.redirect(self.program.window)
-        term.setBackgroundColor(colors.black)
-        term.setTextColor(colors.white)
-        print("Press any key to close window.")
-
-        self.terminated = true
-
-        term.redirect(self.parentTerm)
-        return { true }
-    end
-
     if self.terminated == true then
         return { true }
     end
 
     local result = resumeProcess(self, args)
+
+    if coroutine.status(self.program.co) == "dead" and self.terminated == false then
+        self.terminated = true
+        term.redirect(self.program.window)
+        term.setBackgroundColor(colors.black)
+        term.setTextColor(colors.white)
+        print("Press any key to close window.")
+
+        term.redirect(self.parentTerm)
+        return { true }
+    end
 
     if result then
         local ok, err = result[1], result[2]

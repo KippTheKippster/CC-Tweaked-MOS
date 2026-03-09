@@ -76,7 +76,6 @@ local function addSettingsButton(text, buttonText)
 
     ---@type Button
     local button = settingsButton:new()
-    button.w = 0 -- Why is this needed?
     label:add(button)
     button.text = buttonText
     button.dragSelectable = true
@@ -122,9 +121,9 @@ end
 local versionButton = addSettingsButton("Installer", installerText)
 function versionButton:pressed()
     if fs.exists("/mosInstaller.lua") then
-        mos.openProgram("mosInstaller.lua").text = "MOS Installer"
+        mos.openFile("mosInstaller.lua").text = "MOS Installer"
     else
-        mos.openProgram("/rom/programs/http/pastebin.lua", "get", "Wa0niW8x", "mosInstaller.lua").text = "Downloading MOS Installer"
+        mos.openFile("/rom/programs/http/pastebin.lua", "get", "Wa0niW8x", "mosInstaller.lua").text = "Downloading MOS Installer"
         versionButton.text = "[Run]"
         versionButton.parent:expandChildren()
     end
@@ -146,15 +145,18 @@ addSeperator("-Appearance-")
 local changeTheme = addSettingsButton("Theme", "[Browse]")
 
 function changeTheme:pressed()
-    fileExplorer = mos.openFileDialogue("Choose .thm", function (path)
-        local suffix = ".thm"
-        if path:sub(-#suffix) == suffix then
-            mos.loadTheme(path)
-            mos.engine.root:queueDraw()
-            engine.root:queueDraw()
-            fileExplorer:close()
-        end
-    end, false, mos.toOsPath("/themes/"))
+    fileExplorer = mos.openFileDialogue("Choose .thm", {
+        callback = function (path)
+            local suffix = ".thm"
+            if path:sub(-#suffix) == suffix then
+                mos.loadTheme(path)
+                mos.engine.root:queueDraw()
+                engine.root:queueDraw()
+                fileExplorer:close()
+            end
+        end,
+        start = mos.toOsPath("/themes/")
+    })
 end
 
 local changeBackground = addSettingsButton("Background Image", "[Browse]")
@@ -163,12 +165,15 @@ local imageReset = addReset(changeBackground)
 imageReset.visible = mos.profile.backgroundIcon ~= nil and mos.profile.backgroundIcon ~= ""
 
 function changeBackground:pressed()
-    fileExplorer = mos.openFileDialogue("Choose .nfp", function (path)
-        mos.backgroundIcon.texture = paintutils.loadImage(path)
-        mos.profile.backgroundIcon = path
-        imageReset.visible = true
-        fileExplorer:close()
-    end, false, mos.toOsPath("/textures/backgrounds/"))
+    fileExplorer = mos.openFileDialogue("Choose .nfp", {
+        callback = function (path)
+            mos.backgroundIcon.texture = paintutils.loadImage(path)
+            mos.profile.backgroundIcon = path
+            imageReset.visible = true
+            fileExplorer:close()
+        end,
+        start = mos.toOsPath("/textures/backgrounds/")
+    })
 end
 
 function imageReset:pressed()

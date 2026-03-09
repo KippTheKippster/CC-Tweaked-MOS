@@ -409,19 +409,7 @@ function mos.refreshMosDropdown()
         for k, v in pairs(mos.profile.favorites) do
             local option = mosDropdown:addToList(v.name .. " ")
             option.pressed = function(o)
-                if fs.isDir(k) then
-                    mos.openDir(k)
-                else
-                    local modifier = mos.getFileOpenModifierInput()
-                    if modifier == mos.FileOpenModifier.EDIT then
-                        mos.editProgram(k)
-                    elseif modifier == mos.FileOpenModifier.ARGS then
-                        mos.openProgramWithArgs(k)
-                    else
-                        mos.openProgram(k)
-                    end
-                end
-
+                mos.openWithModifier(k, mos.getInputFileOpenModifier())
             end
             local x = option:addButton()
             x.text = string.char(3)
@@ -580,7 +568,7 @@ function mos.addWindow(w)
     w:queueDraw()
 end
 
----Creates a new window running the program of path, unless you want to specify the position of the window use 'openProgram' instead
+---Creates a new window running the program of path, unless you want more control window use 'openFile' instead
 ---@param name string
 ---@param path string
 ---@param x integer
@@ -649,7 +637,7 @@ mos.FileOpenModifier = {
 
 ---comment
 ---@return FileOpenModifier
-function mos.getFileOpenModifierInput()
+function mos.getInputFileOpenModifier()
     if engine.input.isKey(keys.leftCtrl) then
         return mos.FileOpenModifier.EDIT
     elseif engine.input.isKey(keys.leftShift) then
@@ -659,11 +647,28 @@ function mos.getFileOpenModifierInput()
     end
 end
 
+
+---comment
+---@param path string
+---@param modifier FileOpenModifier
+---@param ... any
+function mos.openWithModifier(path, modifier, ...)
+    if fs.isDir(path) then
+        mos.openDir(path)
+    elseif modifier == mos.FileOpenModifier.EDIT then
+        mos.editFile(path)
+    elseif modifier == mos.FileOpenModifier.ARGS then
+        mos.openFileWithArgs(path)
+    else
+        mos.openFile(path, ...)
+    end
+end
+
 ---Opens a new window running the program expected for the file type (i.e. paint for nfp files, for lua files it will run as expected)
 ---@param path string
 ---@param ... any
 ---@return ProgramWindow
-function mos.openProgram(path, ...)
+function mos.openFile(path, ...)
     local x, y, w, h = nextWindowTransform()
     local file = fs.getName(path)
     for k, v in pairs(mos.profile.fileExceptions) do
@@ -696,7 +701,7 @@ end
 
 ---@param path string
 ---@return ProgramWindow
-function mos.editProgram(path)
+function mos.editFile(path)
     local x, y, w, h = nextWindowTransform()
     return mos.launchProgram("Edit '" .. fs.getName(path) .. "'", "/rom/programs/edit.lua", x, y, w, h, path)
 end
@@ -713,33 +718,34 @@ end
 ---@param path string
 ---@param startText string?
 ---@return ProgramWindow
-function mos.openProgramWithArgs(path, startText)
+function mos.openFileWithArgs(path, startText)
     local args =  mos.openArgs(
         function(data)
-            mos.openProgram(path, table.unpack(data))
+            mos.openFile(path, table.unpack(data))
         end, startText, path)
     args.text = "Args '" .. fs.getName(path) .. "'"
     return args
 end
 
----comment
 ---@param path string
----@param callback function?
 ---@return ProgramWindow
-function mos.openDir(path, callback)
-    local w = mos.openProgram(toOsPath("/programs/files.lua"), callback, { dir = path })
+function mos.openDir(path)
+    local w = mos.openFile(toOsPath("/programs/files.lua"), {start = path})
     w.text = "File Explorer"
     return w
 end
 
 ---comment
+---options = {
+--- callback: function? (function that will be called when file is selected, will open file if callback is null)
+--- start: string? (start directory)
+--- saveMode: boolean? 
+---}
 ---@param title string
----@param callback function
----@param saveMode boolean?
----@param dir string?
+---@param options table
 ---@return ProgramWindow
-function mos.openFileDialogue(title, callback, saveMode, dir)
-    local w = mos.openProgram(toOsPath("programs/files.lua"), callback, { saveMode = saveMode, dir = dir })
+function mos.openFileDialogue(title, options)
+    local w = mos.openFile(toOsPath("/programs/files.lua"), options)
     w.text = title
     return w
 end
@@ -779,7 +785,7 @@ end
 ---comment
 ---@return ProgramWindow
 function mos.popupError(...)
-    local err = mos.openProgram(mos.toOsPath("/programs/error.lua"), ...)
+    local err = mos.openFile(mos.toOsPath("/programs/error.lua"), ...)
     err.programViewport.program.window.setVisible(false)
     err.text = "Error"
     return err
@@ -789,7 +795,7 @@ function mosDropdown:optionPressed(i)
     local text = mosDropdown:getOptionText(i)
     mos.latestMosOption = text
     if text == "Shell" then
-        mos.openProgram("/rom/programs/advanced/multishell.lua").text = "Shell"
+        mos.openFile("/rom/programs/advanced/multishell.lua").text = "Shell"
     elseif text == "Exit" then
         mp.exit()
     elseif text == "Reboot" then
@@ -798,7 +804,7 @@ function mosDropdown:optionPressed(i)
     elseif text == "File Explorer" then
         mos.openDir("")
     elseif text == "Settings" then
-        mos.openProgram(toOsPath("/programs/settings.lua")).text = "Settings"
+        mos.openFile(toOsPath("/programs/settings.lua")).text = "Settings"
     end
 end
 

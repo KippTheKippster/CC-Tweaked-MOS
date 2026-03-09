@@ -163,9 +163,6 @@ function LineEdit:focusChanged()
 end
 
 function LineEdit:getStyle()
-    if __mos then
-        __mos.log(self:inFocus())
-    end
     if self:inFocus() then
        return self.styleFocus
     else

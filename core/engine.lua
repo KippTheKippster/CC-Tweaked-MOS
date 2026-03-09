@@ -142,6 +142,8 @@ local function pRedrawScreen()
     if not ok then
         term.redirect(parentTerm)
         term.setCursorPos(1, 1)
+        term.setBackgroundColor(colors.black)
+        term.setTextColor(colors.white)
         error(err, 0)
     end
 end

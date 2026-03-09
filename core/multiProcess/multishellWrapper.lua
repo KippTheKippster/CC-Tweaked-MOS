@@ -13,6 +13,9 @@ _G.__wrapper = nil
 
 local n = multishell.getFocus()
 local path = args[1]
+if type(path) ~= "string" then
+    error("Path arg is not a valid string: " .. type(path))
+end
 
 local name = fs.getName(path)
 if name:sub(-4) == ".lua" then
@@ -23,8 +26,6 @@ multishell.setTitle(n, name)
 
 term.clear()
 term.setCursorPos(1, 1)
-
-
 
 shell.exit()
 

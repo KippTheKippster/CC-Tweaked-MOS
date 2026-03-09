@@ -148,7 +148,7 @@ function qs:refreshList ()
             local option = list:addToList(program.name)--shortcuts[i]:sub(1, #shortcuts[i] - 4))
             option.pressed = function (o)
                 self:close()
-                mos.openProgram(program.path)
+                mos.openWithModifier(program.path, mos.getInputFileOpenModifier())
             end
 
             if option.text == pathSelection then

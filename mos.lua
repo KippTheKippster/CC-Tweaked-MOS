@@ -1,1 +1,1 @@
-shell.run(fs.getDir(arg[0]) .. "/os/os.lua")
+shell.run(fs.getDir(debug.getinfo(1, "S").source:sub(2)) .. "/os/os.lua")
