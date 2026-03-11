@@ -9,6 +9,40 @@ engine.mp = nil
 ---@type Process?
 engine.p = nil
 
+local parentTerm = term.current()
+local initialW, initialH = parentTerm.getSize()
+local screenBuffer = window.create(parentTerm, 1, 1, initialW, initialH)
+
+engine.parentTerm = parentTerm
+engine.screenBuffer = screenBuffer
+
+---Returns { text, textColor, backgroundColor } drawn at position x, y or nil 
+---@param x number
+---@param y number
+---@return table?
+function engine.getChar(x, y)
+    local _, h = engine.screenBuffer.getSize()
+    if y <= 0 or y > h then
+        return nil
+    end
+
+    local text, textColor, backgroundColor = screenBuffer.getLine(y)
+    local textChar = text:sub(x, x)
+    if textChar ~= "" then
+        local textColorChar = textColor:sub(x,x)
+        local backgroundColorChar = backgroundColor:sub(x,x)
+
+        local char = { text = textChar, textColor = colors.black, backgroundColor = colors.fromBlit(backgroundColorChar) }
+        if textChar ~= " " then
+            char.textColor = colors.fromBlit(textColorChar)
+        end
+
+        return char
+    end
+
+    return nil
+end
+
 ---@type Object
 local object = require(coreDotPath .. ".object")
 local collision = require(coreDotPath .. ".collision")
@@ -32,12 +66,24 @@ styleDown.backgroundColor = colors.white
 styleDown.textColor = colors.orange
 engine.styleDown = styleDown
 
+local styleDisabled = style:inherit()
+styleDisabled.textColor = colors.gray
+engine.styleDisabled = styleDisabled
+
 local styleEdit = style:inherit()
 styleEdit.backgroundColor = colors.gray
 engine.styleEdit = styleEdit
 local styleEditFocus = style:inherit()
 styleEditFocus.backgroundColor = colors.lightGray
 engine.styleEditFocus = styleEditFocus
+
+local styleScroll = style:inherit()
+styleScroll.textColor = colors.lightGray
+styleScroll.backgroundColor = colors.gray
+engine.styleScroll = styleScroll
+local styleScrollDown = styleScroll:inherit()
+styleScrollDown.textColor = colors.orange
+engine.styleScrollDown = styleScrollDown
 
 --Objects
 local function requireObject(name, ...)
@@ -49,9 +95,9 @@ end
 ---@type Control
 engine.Control = requireObject("control", object, engine, style)
 ---@type Button
-engine.Button = requireObject("button", engine.Control, styleDown)
+engine.Button = requireObject("button", engine.Control, styleDown, styleDisabled)
 ---@type Dropdown
-engine.Dropdown = requireObject("dropdown", engine.Button, input, utils, style)
+engine.Dropdown = requireObject("dropdown", engine.Button, input, utils)
 ---@type ColorPicker
 engine.ColorPicker = requireObject("colorPicker", engine.Control, input, style)
 ---@type Container
@@ -63,20 +109,13 @@ engine.HContainer = requireObject("hContainer", engine.Container)
 ---@type FlowContainer
 engine.FlowContainer = requireObject("flowContainer", engine.Container)
 ---@type ScrollContainer
-engine.ScrollContainer = requireObject("scrollContainer", engine.Container, collision, input)
+engine.ScrollContainer = requireObject("scrollContainer", engine.Container, collision, input, styleScroll, styleScrollDown)
 ---@type WindowControl
 engine.WindowControl = requireObject("windowControl", engine.Control, engine.Button, style, style)
 ---@type LineEdit
 engine.LineEdit = requireObject("lineEdit", engine.Control, engine.input, styleEdit, styleEditFocus)
 ---@type Icon
 engine.Icon = requireObject("icon", engine.Control)
-
-local parentTerm = term.current()
-local initialW, initialH = parentTerm.getSize()
-local screenBuffer = window.create(parentTerm, 1, 1, initialW, initialH)
-
-engine.parentTerm = parentTerm
-engine.screenBuffer = screenBuffer          
 
 ---@type Control
 local root = engine.Control:new()
@@ -239,10 +278,6 @@ end
 
 function engine.stop()
     engine.running = false
-end
-
-function engine.newMultiProgram()
-    return require(coreDotPath .. ".multiProcess.multiProgram")
 end
 
 ---@param mp MultiProgram

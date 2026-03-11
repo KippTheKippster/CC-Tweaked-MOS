@@ -459,41 +459,34 @@ function Control:draw()
     self:render()
 end
 
+local function writeShadow(x, y)
+    local char = engine.getChar(x, y)
+    if not char then
+        return
+    end
+
+    term.setCursorPos(x, y)
+    term.setTextColor(char.textColor)
+    term.setBackgroundColor(char.backgroundColor)
+    term.write(string.char(127))
+end
+
 ---@param style Style?
 function Control:drawShadow(style)
     if self.shadow ~= true then return end
     if self.w == 0 or self.h == 0 then return end
     local s = style or self:getStyle()
-
-    term.setTextColor(s.shadowTextColor)
-    term.setBackgroundColor(s.shadowBackgroundColor)
-
     for i = 1 - s.shadowOffsetU, self.h do
-        term.setCursorPos(self.gx + self.w + 1, self.gy + i)
-        term.write(string.char(127))
+        writeShadow(self.gx + self.w + 1, self.gy + i)
     end
 
     for i = 1 - s.shadowOffsetU, self.h do
-        term.setCursorPos(self.gx, self.gy + i)
-        term.write(string.char(127))
+        writeShadow(self.gx, self.gy + i)
     end
 
     for i = 0, self.w + 1 do
-        term.setCursorPos(self.gx + i, self.gy + self.h + 1)
-        term.write(string.char(127))
+        writeShadow(self.gx + i, self.gy + self.h + 1)
     end
-
-    --[[
-    for i = 2 - s.shadowOffsetU, self.h + 1 + s.shadowOffsetD do
-        term.setCursorPos(self.gx + self.w + 1, self.gy + i)
-        term.write(string.char(127))
-    end
-
-    for i = 2 - s.shadowOffsetL, self.w + s.shadowOffsetR do
-        term.setCursorPos(self.gx + i, self.gy + self.h + 1)
-        term.write(string.char(127))
-    end
-    ]]--
 end
 
 ---@param left number
