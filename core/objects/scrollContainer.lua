@@ -2,7 +2,7 @@
 ---@param collision Collision
 ---@param input Input
 ---@return ScrollContainer
-return function(container, collision, input)
+return function(container, collision, input, style, styleDown)
     ---@class ScrollContainer : Container
     local ScrollContainer = container:newClass()
     ScrollContainer.__type = "ScrollContainer"
@@ -14,9 +14,11 @@ return function(container, collision, input)
     ScrollContainer.barStartY = 0
     ScrollContainer.barEndX = 0
     ScrollContainer.barEndY = 0
-    ScrollContainer.barPressed = false
+    ScrollContainer.barDown = false
     ScrollContainer.dynamicBar = true
     ScrollContainer._mOffset = 0
+    ScrollContainer.style = style
+    ScrollContainer.styleDown = styleDown
 
     function ScrollContainer:init(...)
         container.init(self)
@@ -45,7 +47,7 @@ return function(container, collision, input)
     function ScrollContainer:render()
         local c = self:getChild(1)
         local offset = 0
-        if (self.h) / (c.h - self.h) >= 1 then
+        if (self.h) / (c.h - self.h) > 1 then
             local steps = math.max(0, c.h - self.h)
             local stepAmount = math.min(1.0, ((self.h - 1) / steps))
             offset = -c.y * stepAmount
@@ -72,26 +74,31 @@ return function(container, collision, input)
             end
         end
 
+        local st = self:getStyle()
+
         local startX = self.gx + self.w
         local endX = startX
         local startY = self.gy + 1
         local endY = startY + self.h - 1
-        paintutils.drawLine(startX, startY, endX, endY, colors.gray)
+        paintutils.drawLine(startX, startY, endX, endY, st.backgroundColor)
 
         startY = math.floor(self.gy + offset + 1)
         endY = startY + math.ceil(size)
 
-        local color = colors.lightGray
-        if self.barPressed then
-            color = colors.orange
-        end
-
-        paintutils.drawLine(startX, startY, endX, endY, color)
+        paintutils.drawLine(startX, startY, endX, endY, st.textColor)
 
         self.barStartX = startX
         self.barStartY = startY
         self.barEndX = endX
         self.barEndY = endY
+    end
+
+    function ScrollContainer:getStyle()
+        if self.barDown then
+            return self.styleDown
+        else
+            return self.style
+        end
     end
 
     function ScrollContainer:sort()
@@ -144,15 +151,15 @@ return function(container, collision, input)
             local x = data[3]
             local y = data[4]
             if collision.inArea(x, y, self.barStartX, self.barStartY, self.barEndX - self.barStartX, self.barEndY - self.barStartY) then
-                self.barPressed = true
+                self.barDown = true
                 self:queueDraw()
                 self._mOffset = self.barStartY - y - 1
             end
         elseif event == "mouse_up" then
-            self.barPressed = false
+            self.barDown = false
             self:queueDraw()
         elseif event == "mouse_drag" then
-            if self.barPressed then
+            if self.barDown then
                 local x = data[3]
                 local y = data[4]
                 local c = self:getChild(1)

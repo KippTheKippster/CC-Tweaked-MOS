@@ -450,7 +450,7 @@ function sprite:rawEvent(data)
     local event = data[1]
     if event == "term_resize" then
         paint.centerSprite()
-    elseif event == "key" then
+    elseif event == "key" and not engine.input.isInputGrabbed() then
         local key = data[2]
         if engine.input.isKey(keys.leftCtrl) then
             if key == keys.s then
@@ -486,7 +486,7 @@ function sprite:rawEvent(data)
                 end
             end
         end
-    elseif event == "paste" then
+    elseif event == "paste" and not engine.input.isInputGrabbed() then
         if paint.copyCanvas == nil then
             return
         end

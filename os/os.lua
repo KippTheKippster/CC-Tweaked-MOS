@@ -6,10 +6,31 @@ function mos.getVersion()
     return "1.0.0"
 end
 
+local dest = "/.mosdata/logs/"
+if fs.exists(dest) then
+    local logs = fs.list(dest)
+    for i = 1, #logs - 4 do
+        fs.delete(fs.combine(dest, logs[i]))
+    end
+end
+
+local logFile = fs.open(fs.combine(dest, tostring(os.epoch("utc")) .. ".log"), "w")
+function mos.log(...)
+    local line = ""
+    local data = table.pack(...)
+    for _, v in ipairs(data) do
+        line = line .. tostring(v) .. " "
+    end
+    line = line .. '\n'
+
+    logFile.write(line)
+    logFile.flush()
+end
+
 mos.latestMosOption = ""
 
-local runningProgram = shell.getRunningProgram()
-local mosPath = "/" .. fs.getDir(fs.getDir(runningProgram))
+--local runningProgram = shell.getRunningProgram()
+local mosPath = "/" .. fs.getDir(fs.getDir(debug.getinfo(1, "S").source:sub(2)))
 local mosDotPath = mosPath:gsub("/", ".")
 local corePath = mosPath .. "/core"
 local coreDotPath = mosDotPath .. ".core"
@@ -42,33 +63,11 @@ mos.toMosPath = toMosPath
 mos.toOsPath = toOsPath
 mos.toCorePath = toCorePath
 
-local dest = "/.mosdata/logs/"
-if fs.exists(dest) then
-    local logs = fs.list(dest)
-    for i = 1, #logs - 4 do
-        fs.delete(fs.combine(dest, logs[i]))
-    end
-end
-
-local logFile = fs.open(fs.combine(dest, tostring(os.epoch("utc")) .. ".log"), "w")
-function mos.log(...)
-    local line = ""
-    local data = table.pack(...)
-    for _, v in ipairs(data) do
-        line = line .. tostring(v) .. " "
-    end
-    line = line .. '\n'
-
-    logFile.write(line)
-    logFile.flush()
-end
+---@type MultiProgram
+local mp = require(coreDotPath .. ".multiProcess.multiProgram")
 
 ---@type Engine
-local engine = require(coreDotPath .. ".engine")
-
----@type MultiProgram
-local mp = engine.newMultiProgram()
-
+local engine = require(coreDotPath .. ".engine") --mp.loadProgram(engineEnv, toCorePath("/engine.lua"))()--
 local windows = {}
 local customTools = {}
 local currentWindow = nil
@@ -80,13 +79,14 @@ local defaultTheme = {
     backgroundColor = colors.red,
     shadow = true,
     shadowTextColor = colors.black,
-    shadowBackgroundColor = colors.gray,
+    shadowBackgroundColor = colors.white,
     toolbarColors = nil,
     mainColors = {
         text = colors.black,
         background = colors.white,
         downText = colors.black,
         downBackground = colors.lightBlue,
+        disabledText = colors.gray,
         focusText = colors.black,
         focusBackground = colors.lightGray,
     },
@@ -261,6 +261,7 @@ function mos.applyTheme(targetEngine, theme)
 
     local style = e.style
     local styleDown = e.styleDown
+    local styleDisabled = e.styleDisabled
 
     local styleWindow = e.style:inherit()
     local styleWindowFocus = styleWindow:inherit()
@@ -275,7 +276,7 @@ function mos.applyTheme(targetEngine, theme)
 
         styleToolbarDown.textColor = theme.toolbarColors.downText
         styleToolbarDown.backgroundColor = theme.toolbarColors.downBackground
-    
+
         styleToolbarFullscreen.textColor = theme.toolbarColors.fullscreenText
         styleToolbarFullscreen.backgroundColor = theme.toolbarColors.fullscreenBackground
 
@@ -283,8 +284,9 @@ function mos.applyTheme(targetEngine, theme)
         styleToolbarFullscreenDown.backgroundColor = theme.toolbarColors.fullscreenDownBackground
     end
 
-    e. style = styleToolbar
+    e.style = styleToolbar
     e.Dropdown.styleDown = styleToolbarDown
+    --e.Dropdown.styleDisabled = styleToolbarDisabled
 
     e.WindowControl.style = styleWindow
     e.WindowControl.styleFocus = styleWindowFocus
@@ -315,6 +317,7 @@ function mos.applyTheme(targetEngine, theme)
     local styles = {
         main = style,
         mainDown = styleDown,
+        mainDisabled = styleDisabled,
         window = styleWindow,
         windowFocus = styleWindowFocus,
         toolbar = styleToolbar,
@@ -331,6 +334,12 @@ mos.theme = defaultTheme
 mos.user = nil
 
 local userLoaded
+if not fs.exists("/.mosdata/users/user.usr") then
+    local f = fs.open("/.mosdata/users/user.usr", "w")
+    f.write(textutils.serialise(defaultUser))
+    f.close()
+end
+
 mos.user, userLoaded = mos.loadUser()
 mos.loadTheme(mos.user.theme)
 engine.utils.saveTable(defaultTheme, toOsPath("/themes/default.thm"))
@@ -361,6 +370,7 @@ local topBar = focusContainer:addControl("")
 topBar.rendering = true
 topBar.mouseIgnore = true
 topBar.expandW = true
+--[[
 function topBar:getStyle()
     if mos.fullscreenWindow then
        return mos.style.toolbarFullscreen
@@ -368,6 +378,7 @@ function topBar:getStyle()
        return mos.style.toolbar
     end
 end
+]]--
 
 --Tool Bar
 local toolBar = topBar:addHContainer()
@@ -395,6 +406,7 @@ end
 
 ---@type Dropdown
 local windowDropdown = dropdown:new()
+windowDropdown.disabled = true
 mos.addToToolbar(windowDropdown)
 windowDropdown.text = "="
 
@@ -455,14 +467,8 @@ local function setFullscreenMode(fullscreen)
     backgroundIcon.visible = fullscreen == false
     if fullscreen == true then
         topBar:toFront()
-        topBar.style = mos.style.toolbarFullscreen
-        engine.Dropdown.style = mos.style.toolbarFullscreen
-        engine.Dropdown.styleDown = mos.style.toolbarFullscreenDown
     else
         windowContainer:toFront()
-        topBar.style = mos.style.toolbar
-        engine.Dropdown.style = mos.style.toolbar
-        engine.Dropdown.styleDown = mos.style.toolbarDown
     end
 end
 
@@ -506,6 +512,8 @@ local function windowClosed(w, b)
             break
         end
     end
+
+    windowDropdown.disabled = #windows == 0
 end
 
 local function windowVisibilityChanged(w)
@@ -575,6 +583,8 @@ function mos.addWindow(w)
     w:grabFocus()
 
     w:queueDraw()
+
+    windowDropdown.disabled = false
 end
 
 ---Creates a new window running the program of path, unless you want more control window use 'openFile' instead
@@ -608,6 +618,9 @@ function mos.launchProgram(name, path, x, y, w, h, ...)
 
     extraEnv.__mos = mos
     extraEnv.__mosWindow = window
+    extraEnv.term = engineTerm
+    extraEnv.window = engineWindow
+    extraEnv.paintutils = enginePaintutils
 
     viewport:launchProgram(engine.screenBuffer, path, extraEnv, ...)
     --viewport:unhandledEvent({}) -- Forces program to start

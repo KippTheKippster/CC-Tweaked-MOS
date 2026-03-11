@@ -69,6 +69,23 @@ function mp.loadProgram(env, programPath)
     return loadfile(programPath, nil, env)
 end
 
+
+---comment
+---@param extraEnv table?
+---@return table
+function mp.createEnv(extraEnv)
+    local env = { shell = shell, multishell = multishell, __mp = mp }
+    env.require, env.package = dofile("/rom/modules/main/cc/require.lua").make(env, "")
+
+    extraEnv = extraEnv or {}
+    for k, v in pairs(extraEnv) do
+        env[k] = v
+    end
+
+    return env
+end
+
+
 local function runMultishellWrapper(p, env, ...)
     local args = table.pack(...)
     _G.__wrapper = {
@@ -100,21 +117,12 @@ end
 ---@param ... any
 ---@return Process
 function mp.launchProgram(parentTerm, programPath, extraEnv, resume, x, y, w, h, ...)
-    local env = { shell = shell, multishell = multishell, __mp = mp }
-    env.require, env.package = dofile("/rom/modules/main/cc/require.lua").make(env, "")
-
-    extraEnv = extraEnv or {}
-    for k, v in pairs(extraEnv) do
-        env[k] = v
-    end
-
-
+    local env = mp.createEnv(extraEnv)
     local p = mp.launchProcess(parentTerm, function(p, ...)
         runMultishellWrapper(p, env, programPath, ...) -- TODO Read and fix error messages
-        --os.run(env, programPath, ...)
-        --mp.runProgram(env, programPath, ...)
+        os.run(env, programPath, ...)
+        mp.runProgram(env, programPath, ...)
   
-        
         --[[
         local fn, err = mp.loadProgram(env, programPath)
         if fn == nil then

@@ -1,14 +1,18 @@
 ---@return Button
-return function(control, styleDown)
+return function(control, styleDown, styleDisabled)
 ---@class Button : Control
 local Button = control:newClass()
 Button.__type = "Button"
 Button.isClicked = false
+Button.disabled = false
 
 Button.styleDown = styleDown
+Button.styleDisabled = styleDisabled
 
 function Button:getStyle()
-    if self.isClicked then
+    if self.disabled then
+        return self.styleDisabled
+    elseif self.isClicked then
         return self.styleDown
     elseif self.inheritStyle then
         return self.parent:getStyle()

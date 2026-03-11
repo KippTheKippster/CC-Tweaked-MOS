@@ -2,6 +2,7 @@
   shadow = true,
   mainColors = {
     downText = 32768,
+    disabledText = 128,
     focusText = 32768,
     focusBackground = 256,
     text = 32768,
@@ -22,7 +23,7 @@
   fileColors = {
     dirText = 2048,
   },
-  shadowBackgroundColor = 128,
+  shadowBackgroundColor = 1,
   backgroundColor = 16384,
   shadowTextColor = 32768,
 }

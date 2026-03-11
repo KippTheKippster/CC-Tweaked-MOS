@@ -1,5 +1,5 @@
 ---@return Dropdown
-return function(button, input, utils, style)
+return function(button, input, utils)
 ---@class Dropdown : Button
 local Dropdown = button:newClass()
 Dropdown.__type = "Dropdown"
@@ -79,9 +79,8 @@ function Dropdown:addToList(text, clickable)
         b.optionSelectable = true
     else
         b = self.list:addControl()
+        b.optionSelectable = false
     end
-    b.style = self.style
-    b.styleDown = self.styleDown
     b.shadow = false
     b.text = text
     b.h = 1
@@ -108,7 +107,9 @@ function Dropdown:addToList(text, clickable)
     end
 
     b.getStyle = function (o)
-        if o.isClicked then
+        if not o.optionSelectable then
+            return self.styleDisabled
+        elseif o.isClicked then
             return self.styleDown
         else
             return self.style
@@ -142,6 +143,10 @@ function Dropdown:clearList()
 end
 
 function Dropdown:down()
+    if self.disabled then
+        return
+    end
+
     button.down(self)
     self.list.visible = true
     if self.shortcutSelection and self.shortcutSelection ~= self then
@@ -168,6 +173,11 @@ function Dropdown:getOptionsTextList()
 end
 
 function Dropdown:next()
+    if self.disabled then
+        self.list.visible = false
+        return
+    end
+
     self.list.visible = true
     if self:isOpened() == false then
         if self.shortcutSelection ~= nil then

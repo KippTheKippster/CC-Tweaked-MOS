@@ -26,7 +26,7 @@ main.anchorW = main.Anchor.CENTER
 main.anchorH = main.Anchor.CENTER
 
 local Line = engine.Control:newClass()
-Line.h = 1
+Line._h = 1
 
 local w = 0
 local h = 1

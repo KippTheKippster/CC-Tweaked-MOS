@@ -64,19 +64,24 @@ local top = main:addHContainer()
 top.expandW = true
 top.h = 1
 top.topLevel = true
+top.style = top.style:inherit()
+top.style.backgroundColor = engine.styleScroll.textColor
 
 local backButton = top:addButton()
 backButton.text = "<"
 backButton.h = 1
 backButton.dragSelectable = true
+backButton.inheritStyle = true
 
 local topSpacer = top:addControl()
 topSpacer.text = ""
+topSpacer.inheritStyle = true
 
 local pathContainer = top:addHContainer()
 pathContainer.expandW = true
 pathContainer.h = 1
 pathContainer.rendering = true
+pathContainer.inheritStyle = true
 
 local searchbar = main:addLineEdit()
 searchbar.topLevel = true
@@ -407,6 +412,7 @@ function fe.openDir(path)
     local bRoot = pathContainer:addButton()
     bRoot.text = "/"
     bRoot.dragSelectable = true
+    bRoot.inheritStyle = true
     bRoot.pressed = function()
         fe.openDir("")
     end
@@ -417,8 +423,9 @@ function fe.openDir(path)
         bPath = fs.combine(bPath, v)
 
         local b = pathContainer:addButton()
-        b.dragSelectable = true
         b.text = v .. "/"
+        b.dragSelectable = true
+        b.inheritStyle = true
         local ok = bPath
         b.pressed = function()
             fe.openDir(ok)
@@ -920,13 +927,17 @@ local function input(data)
     if event == "paste" then
         fe.pasteClipboard(fe.pasteMode)
     elseif event == "char" then
-        local focus = engine.input.getFocus() -- This should be replaced with inputConsumed
-        if focus == nil or focus.__type ~= "LineEdit" then
-            searchbar:grabFocus()
-        end
+        searchbar:grabFocus()
     elseif event == "key" then
+        local k = data[2]
+        if k == keys.backspace then
+            if searchbar.visible then
+                searchbar:grabFocus()
+                return
+            end
+        end
+
         if engine.input.isKey(keys.leftCtrl) then
-            local k = data[2]
             if k == keys.x then
                 fe.pasteMode = fe.PasteMode.CUT
                 fe.copySelectionToClipboard()
@@ -962,7 +973,8 @@ local function input(data)
                         return
                     end
                 end
-                fe.clearSelection()
+                --fe.clearSelection()
+                fe.selectFileButton(fileContainer:getChild(1), true)
             end
         elseif data[2] == keys.up then
             if #fileContainer.children == 0 then
@@ -982,7 +994,7 @@ local function input(data)
                         return
                     end
                 end
-                fe.clearSelection()
+                fe.selectFileButton(fileContainer:getChild(#fileContainer.children), true)
             end
         elseif data[2] == keys.enter then
             local focus = fe.getFocusFileButton()
