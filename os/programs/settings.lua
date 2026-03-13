@@ -185,28 +185,28 @@ bDirColor.colorPressed = function (_, color)
     sDirColor.set(color)
 end
 
-local bDot = engine.Checkbox:new("   ", settings.get("mos.files.show_dot"))
+local bDot = engine.Checkbox:new(nil, settings.get("mos.files.show_dot"))
 local sDot = addSetting("mos.files.show_dot", "Show dot Files", bDot, false)
 bDot.pressed = function (self)
     engine.Checkbox.pressed(self)
     sDot.set(settings.get("mos.files.show_dot") == false)
 end
 
-local bMos = engine.Checkbox:new("   ", settings.get("mos.files.show_mos"))
+local bMos = engine.Checkbox:new(nil, settings.get("mos.files.show_mos"))
 local sMos = addSetting("mos.files.show_mos", "Show mos Files", bMos, false)
 bMos.pressed = function (self)
     engine.Checkbox.pressed(self)
     sMos.set(settings.get("mos.files.show_mos") == false)
 end
 
-local bRom = engine.Checkbox:new("   ", settings.get("mos.files.show_rom"))
+local bRom = engine.Checkbox:new(nil, settings.get("mos.files.show_rom"))
 local sRom = addSetting("mos.files.show_rom", "Show rom Files", bRom, false)
 bRom.pressed = function (self)
     engine.Checkbox.pressed(self)
     sRom.set(settings.get("mos.files.show_rom") == false)
 end
 
-local bHeart = engine.Checkbox:new("   ", settings.get("mos.files.left_heart"))
+local bHeart = engine.Checkbox:new(nil, settings.get("mos.files.left_heart"))
 local sHeart = addSetting("mos.files.left_heart", "Heart on Left Side", bHeart, false)
 bHeart.pressed = function (self)
     engine.Checkbox.pressed(self)

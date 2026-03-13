@@ -21,6 +21,7 @@ WindowControl.closedSignal = WindowControl:createSignal()
 WindowControl.fullscreenChangedSignal = WindowControl:createSignal()
 WindowControl.shadow = true
 WindowControl._marginL = 2
+WindowControl._fitToText = false
 
 WindowControl.style = style
 WindowControl.styleFocus = styleFocus

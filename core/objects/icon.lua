@@ -23,8 +23,7 @@ Icon:defineProperty('texture', {
         local same = o._texture == value
         o._texture = value
         if same == false then
-            o.w, o.h = o:getTextureSize()
-            o.parent:expandChildren()
+            o:resize()
             o:queueDraw()
         end
     end
@@ -64,6 +63,12 @@ function Icon:getTextureSize()
 	end
 
 	return w, h
+end
+
+function Icon:getMinimumSize()
+    local minW, minH = control.getMinimumSize(self)
+    local tW, tH = self:getTextureSize()
+    return math.max(minW, tW), math.max(minH, tH)
 end
 
 function Icon:centerPosition()

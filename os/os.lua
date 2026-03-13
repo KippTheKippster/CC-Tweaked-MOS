@@ -351,8 +351,7 @@ do
         backgroundIcon.texture = paintutils.loadImage(path)
     end
 end
-backgroundIcon.anchorW = backgroundIcon.Anchor.CENTER
-backgroundIcon.anchorH = backgroundIcon.Anchor.CENTER
+backgroundIcon.centered = true
 mos.backgroundIcon = backgroundIcon
 
 

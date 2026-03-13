@@ -102,13 +102,12 @@ return function(container, collision, input, style, styleDown)
     end
 
     function ScrollContainer:sort()
-        self:expandChildren()
-
         local child = self:getChild(1)
         if child == nil then
             return
         end
 
+        child:resize()
         child:expandChildren()
         limitScroll(self)
     end

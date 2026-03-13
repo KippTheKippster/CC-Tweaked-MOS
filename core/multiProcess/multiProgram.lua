@@ -120,19 +120,6 @@ function mp.launchProgram(parentTerm, programPath, extraEnv, resume, x, y, w, h,
     local env = mp.createEnv(extraEnv)
     local p = mp.launchProcess(parentTerm, function(p, ...)
         runMultishellWrapper(p, env, programPath, ...) -- TODO Read and fix error messages
-        os.run(env, programPath, ...)
-        mp.runProgram(env, programPath, ...)
-  
-        --[[
-        local fn, err = mp.loadProgram(env, programPath)
-        if fn == nil then
-            error(err)
-        end
-        local ok, err = fn(...)
-        if ok == false then
-            error(err)
-        end
-        ]]--
     end, resume, x, y, w, h, ...)
 
     coroutine.resume(p.co, "start")
