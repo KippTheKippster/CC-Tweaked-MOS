@@ -96,6 +96,8 @@ end
 engine.Control = requireObject("control", object, engine, style)
 ---@type Button
 engine.Button = requireObject("button", engine.Control, styleDown, styleDisabled)
+---@type Checkbox
+engine.Checkbox = requireObject("checkbox", engine.Button)
 ---@type Dropdown
 engine.Dropdown = requireObject("dropdown", engine.Button, input, utils)
 ---@type ColorPicker

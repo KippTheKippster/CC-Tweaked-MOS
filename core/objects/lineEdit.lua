@@ -140,6 +140,9 @@ function LineEdit:input(data)
         elseif k == keys.enter then
             self:releaseFocus()
         end
+    elseif event == "paste" then
+        self:addText(data[2], self.cursorX)
+        self.cursorX = self.cursorX + #data[2]
     end
 end
 

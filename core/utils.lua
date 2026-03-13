@@ -61,7 +61,10 @@ local function pushBottom(table, object)
 	repeat until pushDown(table, object) == #table
 end
 
-local function saveTable(tbl, file, compact, allowRepetitions)
+local function saveTable(file, tbl, compact, allowRepetitions)
+    if type(file) == "table" then
+        error("WHAT",2)
+    end
     compact = compact or false
     allowRepetitions = allowRepetitions or true
     local f = fs.open(file, "w")

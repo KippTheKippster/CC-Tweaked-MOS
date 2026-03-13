@@ -15,7 +15,20 @@ ColorPicker.listQueue = nil
 ColorPicker.shortcutSelection = nil
 ColorPicker.optionShadow = false
 ColorPicker.inheritStyle = false
-ColorPicker.style = nil
+ColorPicker.style = style:unique()
+ColorPicker._color = 1
+---@type integer
+ColorPicker.color = nil
+ColorPicker:defineProperty('color', {
+    get = function (o)
+        return o._color
+    end,
+    set = function (o, value)
+        o._color = value
+        o.style.backgroundColor = value
+        o:queueDraw()
+    end
+})
 
 ---@param p ColorPicker
 ---@param color integer
@@ -33,20 +46,19 @@ local function addColor(p, color)
     b.dragSelectable = true
     b.propogateFocusUp = true
     b.down = function (self)
-        p.style.backgroundColor = self.style.backgroundColor
-        p:colorClicked(self.style.backgroundColor)
+        p.color = color
         p:queueDraw()
     end
-    b.up = function (self)
+    b.pressed = function (self)
         p:colorPressed(self.style.backgroundColor)
     end
 end
 
-function ColorPicker:init()
-    control.init(self)
+function ColorPicker:init(text, color)
+    control.init(self, text)
 
     self.style = style:unique()
-
+    self.color = color
     ---@type FlowContainer
     self.list = self:addFlowContainer()
     self.list.topLevel = true
@@ -93,7 +105,6 @@ function ColorPicker:rawEvent(data)
 end
 
 function ColorPicker:colorPressed(color) end
-function ColorPicker:colorClicked(color) end
 
 return ColorPicker
 end

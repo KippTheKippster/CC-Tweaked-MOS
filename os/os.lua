@@ -6,7 +6,7 @@ function mos.getVersion()
     return "1.0.0"
 end
 
-local dest = "/.mosdata/logs/"
+local dest = "/.mosdata/.logs/"
 if fs.exists(dest) then
     local logs = fs.list(dest)
     for i = 1, #logs - 4 do
@@ -73,7 +73,6 @@ local customTools = {}
 local currentWindow = nil
 
 --MOS
---User
 ---@class Theme
 local defaultTheme = {
     backgroundColor = colors.red,
@@ -108,29 +107,16 @@ local defaultTheme = {
 
 local function appendToMap(map, list, value)
     for i, v in ipairs(list) do
+        if type(value) == "table" then
+            local copy = {} -- Entries need to be unique
+            for k, tv in pairs(value) do
+                copy[k] = tv
+            end
+            value = copy
+        end
         map[v] = value
     end
 end
-
-local fileAssociation = {}
-appendToMap(fileAssociation, {".txt", ".md", ".log", ".usr", ".json", ".settings"}, {program="/rom/programs/edit.lua"})
-fileAssociation[".nfp"] = {program="os/programs/paint.lua"}
-
----@class User
-local defaultUser = {
-    backgroundColor = nil,
-    backgroundIcon = toOsPath("/textures/backgrounds/melvin.nfp"),
-    fileExceptions = {},
-    theme = "",
-    favorites = {
-
-    },
-    dirShowDot = true,
-    dirShowRom = true,
-    dirShowMos = true,
-    dirColor = nil,
-    dirLeftHeart = true,
-}
 
 local function validateTable(tbl, default)
     if default == nil then
@@ -144,70 +130,46 @@ local function validateTable(tbl, default)
     end
 end
 
----comment
----@param file string?
----@return User, boolean
-function mos.loadUser(file)
-    file = file or "/.mosdata/users/user.usr"
-    local user = engine.utils.loadTable(file)
-    local loaded = user ~= nil
-    user = user or {}
-    validateTable(user, defaultUser)
-    return user, loaded
-end
-
----comment
----@param file string?
----@param user User?
-function mos.saveUser(file, user)
-    file = file or "/.mosdata/users/user.usr"
-    user = user or mos.user
-    engine.utils.saveTable(user, file)
+function mos.saveSettings()
+    settings.save("/.mosdata/users/" .. mos.user .. "/.settings")
 end
 
 ---comment
 ---@param file string
----@param user User?
 ---@return boolean
-function mos.isFileFavorite(file, user)
-    user = user or mos.user
-    return user.favorites[file] ~= nil
+function mos.isFileFavorite(file)
+    return mos.favorites[file] ~= nil
 end
 
 ---comment
 ---@param file string
 ---@param settings table?
----@param user User?
-function mos.addFileFavorite(file, settings, user)
-    user = user or mos.user
-    if user.favorites[file] ~= nil then return end
+function mos.addFileFavorite(file, settings)
+    if mos.favorites[file] ~= nil then return end
     settings = settings or { name = fs.getName(file) }
-    user.favorites[file] = settings
-    if user == mos.user then
-        os.queueEvent("mos_favorite_add", file)
-    end
+    mos.favorites[file] = settings
+    os.queueEvent("mos_favorite", file)
+    engine.utils.saveTable(".mosdata/users/" .. mos.user .. "/.favorites" , mos.favorites)
 end
 
 ---comment
 ---@param file string
----@param user User?
-function mos.removeFileFavorite(file, user)
-    user = user or mos.user
-    user.favorites[file] = nil
-    if user == mos.user then
-        os.queueEvent("mos_favorite_remove", file)
-    end
+function mos.removeFileFavorite(file)
+    mos.favorites[file] = nil
+    os.queueEvent("mos_favorite_remove", file)
+    engine.utils.saveTable(".mosdata/users/" .. mos.user .. "/.favorites" , mos.favorites)
 end
 
 ---comment
 ---@param file string
 function mos.loadTheme(file)
     local theme = engine.utils.loadTable(file)
+    mos.log("'" .. file .. "'", theme)
     if theme == nil then
         mos.theme = defaultTheme
+        mos.log("heck")
     else
         mos.theme = theme
-        mos.user.theme = file
         validateTable(theme, defaultTheme)
     end
 
@@ -238,7 +200,7 @@ function mos.refreshTheme()
     end
 
     mos.style = mos.applyTheme(engine)
-    engine.backgroundColor = mos.user.backgroundColor or mos.theme.backgroundColor
+    engine.backgroundColor = settings.get("mos.background_color") or mos.theme.backgroundColor
     engine.root:queueDraw()
     os.queueEvent("mos_refresh_theme")
 end
@@ -330,26 +292,64 @@ function mos.applyTheme(targetEngine, theme)
 end
 
 mos.theme = defaultTheme
----@type User
-mos.user = nil
 
-local userLoaded
-if not fs.exists("/.mosdata/users/user.usr") then
-    local f = fs.open("/.mosdata/users/user.usr", "w")
-    f.write(textutils.serialise(defaultUser))
-    f.close()
+do
+    local function def (name, default, description, _type)
+        settings.define("mos." .. name, {description = description, default = default, type = _type or type(default) })
+    end
+
+    def("theme", toOsPath("/themes/default.thm"))
+    def("background_image", nil, nil, "string")
+    def("background_color", nil, nil, "number")
+    def("files.show_dot", true)
+    def("files.show_mos", true)
+    def("files.show_rom", true)
+    def("files.dir_color", nil, nil, "number")
+    def("files.left_heart", true)
+
+    local fa = {}
+    appendToMap(fa, { ".txt", ".md", ".log", ".usr", ".json", ".settings", ".favorites", ".cfg" }, { program="/rom/programs/edit.lua" })
+    fa[".nfp"] = { program = toOsPath("/programs/paint.lua") }
+    def("file_association", fa)
 end
 
-mos.user, userLoaded = mos.loadUser()
-mos.loadTheme(mos.user.theme)
-engine.utils.saveTable(defaultTheme, toOsPath("/themes/default.thm"))
+mos.user = "user"
+do
+    local userPath = ".mosdata/users/" .. mos.user
+    if not fs.exists(userPath) then
+        fs.makeDir(userPath)
+    end
+
+    local settingsPath = userPath .. "/.settings"
+    if not fs.exists(settingsPath) then
+        settings.set("mos.background_image", toOsPath("/textures/backgrounds/melvin.nfp"))
+        settings.save(settingsPath)
+    end
+
+    local favoritesPath = userPath .. "/.favorites"
+    if not fs.exists(favoritesPath) then
+        local f = fs.open(favoritesPath, "w")
+        f.write("{}")
+        f.close()
+    end
+
+    settings.load(settingsPath)
+    mos.favorites = engine.utils.loadTable(favoritesPath)
+end
+
+
+mos.loadTheme(settings.get"mos.theme")
+engine.utils.saveTable(toOsPath("/themes/default.thm"), defaultTheme)
 
 --Objects
 --Background
 local backgroundIcon = engine.root:addIcon()
 backgroundIcon.text = ""
-if mos.user.backgroundIcon ~= "" and fs.exists(mos.user.backgroundIcon or "") then
-    backgroundIcon.texture = paintutils.loadImage(mos.user.backgroundIcon)
+do
+    local path = settings.get("mos.background_image")
+    if path and path ~= "" and fs.exists(path) then
+        backgroundIcon.texture = paintutils.loadImage(path)
+    end
 end
 backgroundIcon.anchorW = backgroundIcon.Anchor.CENTER
 backgroundIcon.anchorH = backgroundIcon.Anchor.CENTER
@@ -422,12 +422,12 @@ function mos.refreshMosDropdown()
     mosDropdown:addToList("Shell")
 
     local l = -1
-    for k, v in pairs(mos.user.favorites) do
+    for k, v in pairs(mos.favorites) do
         l = #k
     end
     if l > -1 then
         mosDropdown:addToList("-------------", false)
-        for k, v in pairs(mos.user.favorites) do
+        for k, v in pairs(mos.favorites) do
             local option = mosDropdown:addToList(v.name .. " ")
             option.pressed = function(o)
                 mos.openWithModifier(k, mos.getInputFileOpenModifier())
@@ -696,7 +696,8 @@ function mos.openFile(path, ...)
     local i = file:reverse():find(".", 1, true)
     if i then
         local suffix = file:sub(#file + 1 - i)
-        local v = mos.user.fileExceptions[file] or mos.user.fileExceptions[suffix] or fileAssociation[suffix]
+        local fa = settings.get("mos.file_association") or {}
+        local v = fa[file] or fa[suffix]
         --mos.log(suffix, textutils.serialise(fileAssociation), v)
         if v then
             local program = path
@@ -764,10 +765,11 @@ end
 ---options = {
 --- callback: function? (function that will be called when file is selected, will open file if callback is null)
 --- start: string? (start directory)
---- saveMode: boolean? 
+--- saveMode: boolean?
+--- closeOnOpen: boolean?
 ---}
 ---@param title string
----@param options table
+---@param options table?
 ---@return ProgramWindow
 function mos.openFileDialogue(title, options)
     local w = mos.openFile(toOsPath("/programs/files.lua"), options)
@@ -921,7 +923,7 @@ engine.root:add(mos.quickSearch)
 mos.quickSearch.y = 1
 
 mos.log("Launching MOS")
-if not userLoaded then
+if userLoaded == false then
     mos.popupError("Failed to load user!", "Using default.")
 end
 

@@ -31,18 +31,18 @@ fe.mountedDisks = {}
 fe.diskTools = {}
 fe.toolsBound = false
 
-local settings = args[1] or {}
+local options = args[1] or {}
 local dirColor = colors.blue
 
 fe.openFileCallback = mos.openWithModifier
-if type(settings.callback) == "function" then
-    fe.openFileCallback = settings.callback
+if type(options.callback) == "function" then
+    fe.openFileCallback = options.callback
 end
 
 
 if mos then
     mos.applyTheme(engine)
-    dirColor = mos.user.dirColor or mos.theme.fileColors.dirText
+    dirColor = settings.get("mos.files.dir_color") or mos.theme.fileColors.dirText
 end
 
 local fileStyle = engine.style:unique()
@@ -119,7 +119,7 @@ SaveContainer.saveButton = nil
 ---@type SaveContainer
 local saveContainer = nil
 
-if settings.saveMode then
+if options.saveMode then
     saveContainer = SaveContainer:new()
     saveContainer.expandW = true
 
@@ -186,7 +186,7 @@ function FileButton:render()
     end
 
     if mos.isFileFavorite(self.path) then
-        if mos.user.dirLeftHeart then
+        if settings.get("mos.files.left_heart") then
             selfText = string.char(3) .. " " .. selfText
         else
             text = text .. " " .. string.char(3)
@@ -357,21 +357,22 @@ end
 
 function fe.list(dir)
     local files = fs.list(dir)
-    if mos.user.dirShowDot and mos.user.dirShowMos and mos.user.dirShowRom then
+    local sDot, sMos, sRom = settings.get("mos.files.show_dot"), settings.get("mos.files.show_mos"), settings.get("mos.files.show_rom")
+    if sDot and sMos and sRom then
         return files
     end
 
     local valid = function(file)
-        if not mos.user.dirShowDot and file:sub(1, 1) == "." then
+        if not sDot and file:sub(1, 1) == "." then
             return false
         end
 
         local path = fs.combine(dir, file)
-        if not mos.user.dirShowMos and path == mos.toMosPath("") or path == ".mosdata" then
+        if not sMos and path == mos.toMosPath("") or path == ".mosdata" then
             return false
         end
 
-        if not mos.user.dirShowRom and path == "rom" then
+        if not sRom and path == "rom" then
             return false
         end
 
@@ -486,6 +487,9 @@ end
 ---@param openModifier FileOpenModifier
 function fe.openFile(path, openModifier, ...)
     fe.openFileCallback(path, openModifier, ...)
+    if options.closeOnOpen then
+        mosWindow:close()
+    end
 end
 
 function fe.refresh()
@@ -499,7 +503,8 @@ function fe.makeFile(name)
     name = fe.formatName(name)
     local path = fe.nameToPath(name)
     if fe.pPopupError(fs.open, path, "w") then
-        fe.addFileButton(name)
+        local b = fe.addFileButton(name)
+        fe.addToSelection(b)
         os.queueEvent("mos_file_new", path)
     end
 end
@@ -511,7 +516,8 @@ function fe.makeDir(name)
     name = fe.formatName(name)
     local path = fe.nameToPath(name)
     if fe.pPopupError(fs.makeDir, path) then
-        fe.addFileButton(name)
+        local b = fe.addFileButton(name)
+        fe.addToSelection(b)
         os.queueEvent("mos_file_new", path)
     end
 end
@@ -914,7 +920,7 @@ local function input(data)
             if searchbar.focus then
                 searchbar:releaseFocus()
             end
-        elseif k == keys.enter and settings.saveMode and saveContainer and saveContainer.saveEdit and saveContainer.saveEdit:inFocus() then -- Long long man
+        elseif k == keys.enter and options.saveMode and saveContainer and saveContainer.saveEdit and saveContainer.saveEdit:inFocus() then -- Long long man
             fe.openFileCallback(fe.nameToPath(saveContainer.saveEdit.text), 0)
             return
         end
@@ -1030,7 +1036,7 @@ local function rawEvent(data)
         fe.mountDisk(data[2])
     elseif event == "disk_eject" then
         fe.unmountDisk(data[2])
-    elseif event == "mos_favorite_add" then
+    elseif event == "mos_favorite" then
         main:queueDraw()
     elseif event == "mos_favorite_remove" then
         main:queueDraw()
@@ -1041,8 +1047,8 @@ end
 
 engine.input.addRawEventListener(rawEvent)
 
-if settings.start then
-    fe.currentPath = settings.start
+if options.start then
+    fe.currentPath = options.start
 end
 
 fe.openDir(fe.currentPath)

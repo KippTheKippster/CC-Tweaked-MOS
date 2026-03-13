@@ -140,7 +140,7 @@ function qs:refreshList ()
         end
 
         local continue = true
-        if mos.user.dirShowDot == false and program.name:sub(0, 1) == "." then
+        if not settings.get("mos.files.show_dot") and program.name:sub(0, 1) == "." then
             continue = false
         end
 

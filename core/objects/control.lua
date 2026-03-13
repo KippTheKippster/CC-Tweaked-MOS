@@ -728,8 +728,16 @@ function Control:addButton(text)
     return addControl(self, engine.Button, text)
 end
 
+---@param text string?
+---@return Button
+function Control:addCheckbox(text, checked)
+    return addControl(self, engine.Checkbox, text, checked)
+end
+
+---@param text string
+---@param color number
 ---@return ColorPicker
-function Control:addColorPicker()
+function Control:addColorPicker(text, color)
     return addControl(self, engine.ColorPicker)
 end
 
