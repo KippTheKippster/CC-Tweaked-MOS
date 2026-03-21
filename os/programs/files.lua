@@ -165,7 +165,7 @@ FileButton._marginR = 1
 function FileButton:render()
     --PANEL
     local st = self:getStyle()
-    if st ~= self.normalStyle then -- Skip drawing background when it is the same as the program background
+    if st ~= self.style then -- Skip drawing background when it is the same as the program background
         self:drawPanel(self:getBorders())
     end
 
@@ -291,12 +291,16 @@ function fe.newFileButton(name)
         fileButton.style = dirStyle
         fileButton.selectStyle = dirSelectStyle
         fileButton.doublePressed = function(o)
-            fe.openDir(path)
+            if engine.input.isKey(keys.leftShift) then
+                mos.openDir(o.path)
+            else
+                fe.openDir(o.path)
+            end
         end
     else
         fileButton.style = fileStyle
         fileButton.doublePressed = function(o)
-            fe.openFile(path, mos.getInputFileOpenModifier())
+            fe.openFile(o.path, mos.getInputFileOpenModifier())
         end
     end
     fileButton.h = 1
@@ -444,21 +448,25 @@ function fe.openDir(path)
         end
     end
 
+    local fileButtons = {}
+
     for _, dirName in ipairs(dirNames) do
-        local b = fe.addFileButton(dirName)
+        local b = fe.newFileButton(dirName)
+        table.insert(fileButtons, b)
         if b.path == fe.startFile then
             fe.selectFileButton(b, true)
         end
     end
 
     for _, fileName in ipairs(fileNames) do
-        local b = fe.addFileButton(fileName)
+        local b = fe.newFileButton(fileName)
+        table.insert(fileButtons, b)
         if b.path == fe.startFile then
             fe.selectFileButton(b, true)
         end
     end
 
-    fileContainer:expandChildren() -- Hack, add replaceChildren instead
+    fileContainer:replaceChildren(fileButtons)
 
     fe.startFile = ""
 end

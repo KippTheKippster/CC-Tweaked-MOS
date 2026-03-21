@@ -1,9 +1,6 @@
 Enviroment isn't sent if a program is run through edit mode
 Rename render to draw, add isDrawAllowed, and rename rendering variable
 
-Rework resize to not use expandChildren
-
 Margin:
-    Should margin affect min size?
     Check VContainer with margin and fitToChildren + centerText
     VContainer fitToChildren should add it's margin to the final size

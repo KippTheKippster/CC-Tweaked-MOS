@@ -67,7 +67,7 @@ local function addSetting(name, label, control, addRevert)
     setting.revertButton = nil
     setting:add(control)
     setting.set = function (value)
-        if value then
+        if value ~= nil then
             settings.set(name, value)
         else
             settings.unset(name)

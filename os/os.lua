@@ -164,10 +164,8 @@ end
 ---@param file string
 function mos.loadTheme(file)
     local theme = engine.utils.loadTable(file)
-    mos.log("'" .. file .. "'", theme)
     if theme == nil then
         mos.theme = defaultTheme
-        mos.log("heck")
     else
         mos.theme = theme
         validateTable(theme, defaultTheme)
@@ -298,7 +296,7 @@ do
         settings.define("mos." .. name, {description = description, default = default, type = _type or type(default) })
     end
 
-    def("theme", toOsPath("/themes/default.thm"))
+    def("theme", "os/themes/default.thm")
     def("background_image", nil, nil, "string")
     def("background_color", nil, nil, "number")
     def("files.show_dot", true)
@@ -309,7 +307,7 @@ do
 
     local fa = {}
     appendToMap(fa, { ".txt", ".md", ".log", ".usr", ".json", ".settings", ".favorites", ".cfg" }, { program="/rom/programs/edit.lua" })
-    fa[".nfp"] = { program = toOsPath("/programs/paint.lua") }
+    fa[".nfp"] = { program = "os/programs/paint.lua" }
     def("file_association", fa)
 end
 
@@ -351,7 +349,8 @@ do
         backgroundIcon.texture = paintutils.loadImage(path)
     end
 end
-backgroundIcon.centered = true
+backgroundIcon.anchorW = backgroundIcon.Anchor.CENTER
+backgroundIcon.anchorH = backgroundIcon.Anchor.CENTER
 mos.backgroundIcon = backgroundIcon
 
 
@@ -697,7 +696,6 @@ function mos.openFile(path, ...)
         local suffix = file:sub(#file + 1 - i)
         local fa = settings.get("mos.file_association") or {}
         local v = fa[file] or fa[suffix]
-        --mos.log(suffix, textutils.serialise(fileAssociation), v)
         if v then
             local program = path
             if v.program then

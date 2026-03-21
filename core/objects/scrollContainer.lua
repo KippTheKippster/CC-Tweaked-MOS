@@ -31,17 +31,28 @@ return function(container, collision, input, style, styleDown)
         container.queueFree(self)
     end
 
-    local function limitScroll(self)
+    local function limitScroll(self, y)
+        local child = self:getChild(1)
+        if not child then
+            return y
+        end
+
+        if y >= 0 then
+            y = 0
+        elseif y < self.h - child.h then
+            y = self.h - child.h
+        end
+        
+        return y
+    end
+
+    local function limitChildY(self)
         local child = self:getChild(1)
         if not child then
             return
         end
 
-        if child.y >= 0 then
-            child.y = 0
-        elseif child.y < self.h - child.h then
-            child.y = self.h - child.h
-        end
+        child.y = limitScroll(self, child.y)
     end
 
     function ScrollContainer:render()
@@ -64,12 +75,12 @@ return function(container, collision, input, style, styleDown)
         if self.dynamicBar then
             if size >= self.h - 1 then -- No scroll
                 self.marginR = 0
-                limitScroll(self)
+                limitChildY(self)
                 return
             else
                 if self.marginR == 0 then
                     self.marginR = 1
-                    limitScroll(self)
+                    limitChildY(self)
                 end
             end
         end
@@ -108,14 +119,12 @@ return function(container, collision, input, style, styleDown)
         end
 
         child:resize()
-        child:expandChildren()
-        limitScroll(self)
+        limitChildY(self)
     end
 
     function ScrollContainer:setScroll(position)
         local child = self:getChild(1)
-        child.y = -position
-        limitScroll(self)
+        child.y = limitScroll(self, -position)
     end
 
     function ScrollContainer:scroll(dir, _, _)
@@ -136,7 +145,7 @@ return function(container, collision, input, style, styleDown)
     end
 
     function ScrollContainer:transformChanged()
-        limitScroll(self)
+        limitChildY(self)
     end
 
     function ScrollContainer:resize()

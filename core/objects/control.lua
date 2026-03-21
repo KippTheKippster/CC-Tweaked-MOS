@@ -189,8 +189,8 @@ Control:defineProperty('w', {
         o._w = value
         if same == false then
             o:queueDraw()
-            o:transformChanged()
             o:expandChildren()
+            o:transformChanged()
             o:sizeChanged()
         end
     end
@@ -203,8 +203,8 @@ Control:defineProperty('h', {
         o._h = value
         if same == false then
             o:queueDraw()
-            o:transformChanged()
             o:expandChildren()
+            o:transformChanged()
             o:sizeChanged()
         end
     end
@@ -262,7 +262,6 @@ Control:defineProperty('marginL', {
         o._marginL = value
         if same == false then
             o:resize()
-            --o:expandChildren()
         end
     end
 })
@@ -274,7 +273,6 @@ Control:defineProperty('marginR', {
         o._marginR = value
         if same == false then
             o:resize()
-            --o:expandChildren()
         end
     end
 })
@@ -289,7 +287,7 @@ function Control:init(text)
 end
 
 function Control:expandChildren()
-    for i, _ in ipairs(self.children) do
+    for i = 1, #self.children do
         self:getChild(i):resize()
     end
 end
@@ -399,6 +397,9 @@ Control:defineProperty('anchorW', {
     set = function(o, value)
         local same = o._anchorW == value
         o._anchorW = value
+        if same == false then
+            o:resize()
+        end
     end
 })
 
@@ -408,8 +409,7 @@ Control:defineProperty('anchorH', {
         local same = o._anchorH == value
         o._anchorH = value
         if same == false then
-
-
+            o:resize()
         end
     end
 })
@@ -571,6 +571,13 @@ function Control:write(text, style)
     end
 end
 
+local function addChild(self, c)
+    c.parent = self
+    c.gx = self.gx + c.x
+    c.gy = self.gy + c.y
+    c:treeEntered()
+end
+
 ---Add the Control object 'o' as a child
 ---@param o Control
 function Control:add(o)
@@ -579,13 +586,10 @@ function Control:add(o)
     end
 
     table.insert(self.children, o)
-    o.parent = self
-    o.gx = self.gx + o.x
-    o.gy = self.gy + o.y
-    o.treeEntered(o) -- TODO Maybe make recursive
-    o:resize()
+    addChild(self, o)
+    --o:resize()
+    self:expandChildren()
     self:childrenChanged()
-    --self:expandChildren()
     self:queueDraw()
 end
 
@@ -615,6 +619,20 @@ function Control:freeChildren()
         b:queueFree()
     end
     self.children = {}
+end
+
+---Frees and replaces the control's children, this is recommended to be used instead of Control.add when adding a large number of children
+---@param children table
+function Control:replaceChildren(children)
+    self:freeChildren()
+    self.children = children
+    for i = 1, #self.children do
+        local c = self:getChild(i)
+        addChild(self, c)
+    end
+    self:childrenChanged()
+    self:expandChildren()
+    self:queueDraw()
 end
 
 ---@param button integer
