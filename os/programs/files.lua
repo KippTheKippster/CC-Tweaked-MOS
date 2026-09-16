@@ -887,8 +887,9 @@ function fe.mountDisk(path)
     if not isDiskSupported(path) then
         return
     end
-    mos.log("mount ", path)
-    fe.mountedDisks[path] = disk.getMountPath(path)
+
+    local mount = disk.getMountPath(path) or disk.getAudioTitle(path) or "UNKOWN"
+    fe.mountedDisks[path] = mount
     assert(fe.diskTools[path] == nil, "Trying to add a disk tool that already exists")
     local bound = fe.toolsBound
     if bound then
@@ -906,7 +907,7 @@ function fe.unmountDisk(path)
     if not fe.mountedDisks[path] then
         return
     end
-    mos.log("unmount ", path)
+
     fe.mountedDisks[path] = nil
     assert(fe.diskTools[path] ~= nil, "Trying to remove a non-existent disk tool")
     local bound = fe.toolsBound
@@ -921,10 +922,12 @@ function fe.unmountDisk(path)
 end
 
 function fe.scanDisks()
-    for _, name in ipairs(fs.list("")) do
-        local drive = fs.getDrive(name)
-        if drive ~= "rom" and drive ~= "hdd" then
-            fe.mountDisk(drive)
+    for _, name in ipairs(peripheral.getNames()) do
+        if peripheral.hasType(name, "drive") then
+            local drive = peripheral.wrap(name)
+            if drive.isDiskPresent() then
+                fe.mountDisk(name)
+            end
         end
     end
 end
@@ -1033,6 +1036,7 @@ end
 function fe.addTools()
     mos.addToToolbar(fileDropdown)
     mos.addToToolbar(editDropdown)
+    --- TODO Prioritize where disk.hasData() == true
     for _, v in pairs(fe.diskTools) do
         mos.addToToolbar(v)
     end
