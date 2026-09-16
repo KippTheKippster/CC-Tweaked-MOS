@@ -11,6 +11,11 @@ local args = { ... }
 local fe = {}
 fe.currentPath = ""
 fe.startFile = ""
+--- Stores file buttons
+--- key:  path,
+--- value: button
+---@type table<string, FileButton>
+fe.fileButtons = {}
 
 ---@type FileButton[]
 fe.selection = {}
@@ -18,7 +23,10 @@ fe.selection = {}
 fe.pasteMode = "copy"
 ---@type string[]
 fe.clipboard = {}
----@type table<string, boolean>
+--- Stores disks that have been mounted
+--- key:  disk name,
+--- value: mount path
+---@type table<string, string>
 fe.mountedDisks = {}
 ---@type table<string, Control>
 fe.diskTools = {}
@@ -82,6 +90,15 @@ searchbar.topLevel = true
 searchbar.expandW = true
 searchbar.visible = false
 
+local warning = main:addControl("")
+do
+    warning.expandW = true
+    local s = warning.style:inherit()
+    s.backgroundColor = colors.yellow
+    warning.style = s
+end
+warning.visible = false
+
 searchbar.textChanged = function(self)
     engine.LineEdit.textChanged(self)
     if self.text == "" then
@@ -136,6 +153,20 @@ function fe.popupError(err)
     mos.popupError(fs.getName(err))
 end
 
+---@param warn string
+function fe.setWarning(warn)
+    if warn == "" then
+        warning.visible = false
+        warning:queueDraw()
+        main:queueSort()
+    else
+        warning.text = "Warning: " .. warn
+        warning.visible = true
+        warning:queueDraw()
+        main:queueSort()
+    end
+end
+
 ---@param f function
 ---@param ... any
 ---@return boolean, string
@@ -177,6 +208,10 @@ FileButton.selected = false
 FileButton.styleSelect = fileSelectStyle
 FileButton.styleCut = fileCutStyle
 FileButton.path = ""
+FileButton.fileInfo = {
+    type = "file",
+    size = 0
+}
 FileButton._marginL = 1
 FileButton._marginR = 1
 
@@ -191,17 +226,15 @@ function FileButton:render()
     local selfText = self.text
     local text = ""
 
-    if fs.isDir(self.path) then              -- This can all be moved to init
-        --  self.style.textColor = getDirColor()
-        --self.styleDown.textColor = getDirColor()
+    if self.fileInfo.type == "dir" then
         selfText = ">" .. selfText
-        text = tostring(#fs.list(self.path)) -- This could be slow
+        text = tostring(self.fileInfo.size)
     else
-        local size = fs.getSize(self.path)
+        local size = self.fileInfo.size--fs.getSize(self.path)
         if size < 100 then
-            text = math.ceil(fs.getSize(self.path)) .. "  B"
+            text = math.ceil(size) .. "  B"
         else
-            text = math.ceil(fs.getSize(self.path) / 100) / 10 .. " kB"
+            text = math.ceil(size / 100) / 10 .. " kB"
         end
     end
 
@@ -328,6 +361,10 @@ function fe.newFileButton(name)
         fileButton.style = dirStyle
         fileButton.styleSelect = dirSelectStyle
         fileButton.styleCut = dirCutStyle
+        fileButton.fileInfo = {
+            type = "dir",
+            size = #fs.list(path)
+        }
         fileButton.doublePressed = function(o)
             if engine.input.isKey(keys.leftShift) then
                 mos.openDir(o.path)
@@ -337,6 +374,10 @@ function fe.newFileButton(name)
         end
     else
         fileButton.style = fileStyle
+        fileButton.fileInfo = {
+            type = "file",
+            size = fs.getSize(path)
+        }
         fileButton.doublePressed = function(o)
             fe.openFile(o.path, mos.getInputFileOpenModifier())
         end
@@ -389,7 +430,7 @@ end
 ---@param name string
 ---@return string
 function fe.nameToPath(name)
-    return "/" .. fs.combine(fe.currentPath, name)
+    return fs.combine(fe.currentPath, name)
 end
 
 function fe.formatName(name)
@@ -436,15 +477,19 @@ end
 function fe.openDir(path)
     term.setBackgroundColor(colors.black)
     if not fs.exists(path) then
-        error("Attemting to open non existent dir '" .. path .. "'", 0)
+        mos.popupError("Attemting to open non existent dir '" .. path .. "'")
+        return
     end
 
     if not fs.isDir(path) then
-        error("Not a directory '" .. path .. "'", 0)
+        mos.popupError("Not a directory '" .. path .. "'")
+        return
     end
 
     fe.currentPath = path
     fe.clearSelection()
+    fe.fileButtons = {}
+    fe.setWarning("")
 
     fileContainer:freeChildren()
     pathContainer:freeChildren()
@@ -490,6 +535,10 @@ function fe.openDir(path)
 
     for _, dirName in ipairs(dirNames) do
         local b = fe.newFileButton(dirName)
+        if fe.mountedDisks[b.path] then
+            b.text = "["..b.text.."]"
+        end
+        fe.fileButtons[dirName] = b
         table.insert(fileButtons, b)
         if b.path == fe.startFile then
             fe.selectFileButton(b, true)
@@ -498,6 +547,7 @@ function fe.openDir(path)
 
     for _, fileName in ipairs(fileNames) do
         local b = fe.newFileButton(fileName)
+        fe.fileButtons[fileName] = b
         table.insert(fileButtons, b)
         if b.path == fe.startFile then
             fe.selectFileButton(b, true)
@@ -543,10 +593,37 @@ function fe.refresh()
 end
 
 ---comment
+---@param path string
+function fe.refreshFile(path)
+    if fs.getDir(path) == fe.currentPath then
+        if fe.fileButtons[path] then
+            if not fs.exists(path) then
+                fe.fileButtons[path]:queueFree()
+                fe.fileButtons[path] = nil
+            end
+        else
+            if fs.exists(path) then
+                local b = fe.addFileButton(fs.getName(path))
+                fe.fileButtons[path] = b
+            end
+        end
+    end
+
+    if path == fe.currentPath then
+        if fs.exists(path) then
+            fe.openDir(path)
+        else
+            fe.setWarning("current dir does not exist")
+        end
+    end
+end
+
+---comment
 ---@param name string
 function fe.makeFile(name)
     -- Note: unlike fs.makeDir, fs.open does not throw errors when it fails to create a file, so checks are required
     if name == nil or name == "" then return end
+    if not fs.exists(fe.currentPath) then return end
     name = fe.formatName(name)
     local path = fe.nameToPath(name)
     if fs.exists(path) then
@@ -570,6 +647,7 @@ end
 ---@param name string
 function fe.makeDir(name)
     if name == nil or name == "" then return end
+    if not fs.exists(fe.currentPath) then return end
     name = fe.formatName(name)
     local path = fe.nameToPath(name)
     if fe.pPopupError(fs.makeDir, path) then
@@ -752,12 +830,12 @@ end
 function fe.newDriveDropdown(path)
     ---@type Dropdown
     local dropdown = mos.engine.Dropdown:new()
-    local title = disk.getMountPath(path)
-    dropdown.text = title
+    local mount = disk.getMountPath(path)
+    dropdown.text = mount
     dropdown.text = "[" .. dropdown.text .. "]"
     dropdown.w = #dropdown.text
-    dropdown:addToList("Install Folder")
-    dropdown:addToList("Install Here")
+    dropdown:addToList("Open")
+    dropdown:addToList("Open Window")
     dropdown:addToList("--------------", false)
     dropdown:addToList("Set Label")
     dropdown:addToList("Info")
@@ -766,38 +844,18 @@ function fe.newDriveDropdown(path)
 
     dropdown.optionPressed = function(o, idx)
         local text = o:getOptionText(idx)
-        if text == "Install Folder" then
-            local edit = fe.newFileEdit("", function (o)
-                fe.pPopupError(fs.copy, disk.getMountPath(path), fe.nameToPath(o.text))
-                fe.addFileButton(o.text)
-                o:queueFree()
-            end)
-            fileContainer:add(edit)
-        elseif text == "Install Here" then
-            local mountPath = disk.getMountPath(path)
-            local files = fs.list(mountPath, "r")
-            for i = 1, #files do
-                local from = fs.combine(mountPath, files[i])
-                local to = fe.nameToPath(files[i])
-                local ok = true
-                if fs.exists(to) then
-                    ok = fe.pPopupError(fs.delete, to) --TODO change to multi error
-                end
-                if ok then
-                    ok = fe.pPopupError(fs.copy, from, to)
-                    --if ok then
-                    --    fe.addFileButton(files[i])
-                    --end
-                end
-            end
-            fe.refresh()
+        if text == "Open" then
+            fe.openDir(mount)
+        elseif text == "Open Window" then
+            mos.openDir(mount)
+            return
         elseif text == "Set Label" then
             mos.openArgs(function (data)
                 disk.setLabel(path, data[1]) -- TODO Combine data to one string
             end, disk.getLabel(path)).text = "Set Label"
             return
         elseif text == "Info" then
-            mos.openFile(mos.toOsPath("/programs/diskInfo.lua"), path).text = "Disk Info '" .. title .. "'"
+            mos.openFile(mos.toOsPath("/programs/diskInfo.lua"), path).text = "Disk Info '" .. mount .. "'"
             return
         elseif text == "Eject" then
             disk.eject(path)
@@ -807,6 +865,10 @@ function fe.newDriveDropdown(path)
     end
 
     return dropdown
+end
+
+local function isDiskSupported(path)
+    return disk.hasData(path) or disk.hasAudio(path)
 end
 
 function fe.newDiskDropdown(path)
@@ -822,8 +884,11 @@ end
 ---comment
 ---@param path string
 function fe.mountDisk(path)
+    if not isDiskSupported(path) then
+        return
+    end
     mos.log("mount ", path)
-    fe.mountedDisks[path] = true
+    fe.mountedDisks[path] = disk.getMountPath(path)
     assert(fe.diskTools[path] == nil, "Trying to add a disk tool that already exists")
     local bound = fe.toolsBound
     if bound then
@@ -838,8 +903,11 @@ end
 ---comment
 ---@param path string
 function fe.unmountDisk(path)
+    if not fe.mountedDisks[path] then
+        return
+    end
     mos.log("unmount ", path)
-    fe.mountedDisks[path] = false
+    fe.mountedDisks[path] = nil
     assert(fe.diskTools[path] ~= nil, "Trying to remove a non-existent disk tool")
     local bound = fe.toolsBound
     if bound then
@@ -853,18 +921,10 @@ function fe.unmountDisk(path)
 end
 
 function fe.scanDisks()
-    local mountPaths = {
-        "top",
-        "bottom",
-        "front",
-        "back",
-        "right",
-        "left"
-    }
-
-    for i, name in ipairs(mountPaths) do
-        if disk.isPresent(name) then
-            fe.mountDisk(name)
+    for _, name in ipairs(fs.list("")) do
+        local drive = fs.getDrive(name)
+        if drive ~= "rom" and drive ~= "hdd" then
+            fe.mountDisk(drive)
         end
     end
 end
@@ -1121,7 +1181,13 @@ local function rawEvent(data)
     local event = data[1]
     if event == "disk" then
         fe.mountDisk(data[2])
+        if fe.mountedDisks[data[2]] then
+            fe.refreshFile(fe.mountedDisks[data[2]])
+        end
     elseif event == "disk_eject" then
+        if fe.mountedDisks[data[2]] then
+            fe.refreshFile(fe.mountedDisks[data[2]])
+        end
         fe.unmountDisk(data[2])
     elseif event == "mos_favorite" then
         main:queueDraw()
@@ -1138,7 +1204,7 @@ if options.start then
     fe.currentPath = options.start
 end
 
-fe.openDir(fe.currentPath)
 fe.scanDisks()
+fe.openDir(fe.currentPath)
 
 engine.start()
