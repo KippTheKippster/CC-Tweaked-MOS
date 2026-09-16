@@ -86,7 +86,7 @@ engine.FlowContainer = requireObject("flowContainer", engine.Container)
 ---@type ScrollContainer
 engine.ScrollContainer = requireObject("scrollContainer", engine.Container, collision, input, styleScroll, styleScrollDown)
 ---@type WindowControl
-engine.WindowControl = requireObject("windowControl", engine.Control, engine.Button, style, style)
+engine.WindowControl = requireObject("windowControl", engine.Control, engine.Button, style, style, styleDown)
 ---@type LineEdit
 engine.LineEdit = requireObject("lineEdit", engine.Control, engine.input, styleEdit, styleEditFocus)
 ---@type Icon
@@ -198,63 +198,6 @@ local fnInput = function()
     end
 end
 
----@type function[]
-local audioCallbacks = {}
-
-local speakerLeft = peripheral.wrap("left")
-local speakerRight = peripheral.wrap("right")
-
-local bufferSize = 4096
-local samplesLeft = {}
-local samplesRight = {}
-for i = 1, bufferSize do
-    samplesLeft[i] = 0
-    samplesRight[i] = 0
-end
-local fnAudioLeft = function()
-    ---@type integer[]
-    while engine.running do
-        while not speakerLeft.playAudio(samplesLeft) do
-            for i = 1, bufferSize do
-                samplesLeft[i] = 0
-            end
-    
-            --os.queueEvent("mos_audio_help")
-            for _, callback in ipairs(audioCallbacks) do
-                callback()
-            end
-
-            coroutine.yield()
-        end
-    end
-end
-
-local fnAudioRight = function()
-    ---@type integer[]
-    while engine.running do
-        while not speakerRight.playAudio(samplesRight) do
-            for i = 1, bufferSize do
-                samplesRight[i] = 0
-            end
-    
-            coroutine.yield()
-        end
-    end
-end
-
-
-function engine.setSamples(sLeft, sRight)
-    for i = 1, math.min(#sLeft, bufferSize) do
-        samplesLeft[i] = math.max(math.min(samplesLeft[i] + sLeft[i], 127), -128)
-        samplesRight[i] = math.max(math.min(samplesRight[i] + sRight[i], 127), -128)
-    end
-end
-
----@param callback function
-function engine.addAudioCallback(callback)
-    table.insert(audioCallbacks, callback)
-end
-
 engine.drawCount = 0
 function engine.start()
     if engine.running then return end
@@ -289,11 +232,6 @@ function engine.start()
 
     local coDraw = coroutine.create(fnDraw)
     local coInput = coroutine.create(fnInput)
-    local coAudioLeft = coroutine.create(fnAudioLeft)
-    local coAudioRight = coroutine.create(fnAudioRight)
-    coroutine.resume(coAudioLeft, table.unpack({}))
-    coroutine.resume(coAudioRight, table.unpack({}))
-
 
     coroutine.resume(coDraw)
     while engine.running do
@@ -302,10 +240,6 @@ function engine.start()
         local ok, err = false, nil
         if data[1] == "timer" and data[2] == drawTimerID then
             ok, err = coroutine.resume(coDraw, table.unpack(data))
-        elseif data[1] == "speaker_audio_empty" and data[2] == "left" then
-            ok, err = coroutine.resume(coAudioLeft, table.unpack(data))
-        elseif data[1] == "speaker_audio_empty" and data[2] == "right" then
-            ok, err = coroutine.resume(coAudioRight, table.unpack(data))
         else
             ok, err = coroutine.resume(coInput, table.unpack(data))
         end

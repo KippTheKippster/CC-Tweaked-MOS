@@ -911,7 +911,7 @@ function fe.clearTools()
     end
 end
 
-mos.bindTool(mosWindow, function(focus)
+mos.bindWindowTool(mosWindow, function(focus)
     fe.toolsBound = focus
     if focus then
         fe.addTools()

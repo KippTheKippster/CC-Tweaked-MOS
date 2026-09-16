@@ -911,7 +911,7 @@ if mos then
         mosWindow:grabFocus()
     end
 
-    mos.bindTool(mosWindow, function(focus)
+    mos.bindWindowTool(mosWindow, function(focus)
         if focus then
             mos.addToToolbar(fileDropdown)
             mos.addToToolbar(imageDropdown)

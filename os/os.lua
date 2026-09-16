@@ -83,14 +83,17 @@ end
 
 ---@type MultiProgram
 
+---@type MultiProgram
 local mp = loadAPI(fs.combine(corePath, "multiProcess/multiProgram.lua"), {mos = mos})
---local mp = require(coreDotPath .. ".multiProcess.multiProgram")
 
 ---@type Engine
 local engine = loadAPI(fs.combine(corePath, "engine.lua"), {mos = mos})--require(coreDotPath .. ".engine") --mp.loadProgram(engineEnv, toCorePath("/engine.lua"))()--
+---@type ProgramWindow[]
 local windows = {}
-local customTools = {}
-local currentWindow = nil
+---@type table<ProgramWindow, function>
+local windowTools = {}
+---@type table<ProgramWindow, function>
+local windowAudio = {}local currentWindow = nil
 
 -- Private Mos vars
 local favorites = {}
@@ -336,6 +339,7 @@ do
     local fa = {}
     appendToMap(fa, { ".txt", ".md", ".log", ".usr", ".json", ".settings", ".favorites", ".cfg" }, { program="/rom/programs/edit.lua" })
     fa[".nfp"] = { program = "os/programs/paint.lua" }
+    fa[".dfpwm"] = { program = "os/programs/music.lua" }
     def("file_association", fa)
 end
 
@@ -388,7 +392,6 @@ end
 
 
 local focusContainer = engine.root:addControl()
-focusContainer.expandW = true
 focusContainer.mouseIgnore = true
 focusContainer.rendering = false
 
@@ -522,17 +525,22 @@ local function windowFullscreenChanged(w)
 end
 
 ---comment
----@param w WindowControl
+---@param w ProgramWindow
 ---@param b Button
 local function windowClosed(w, b)
+    if windowAudio[w] then
+        mos.removeAudioCallback(windowAudio[w])
+        windowAudio[w] = nil
+    end
+
     w.fullscreen = false
     windowFullscreenChanged(w) -- This is a bit of a hack, but it doesn't seem like the fullscreen signal is called right after?
     if isFullscreen() == false then
         setFullscreenMode(false)
     end
     windowDropdown:removeFromList(b)
-    if customTools[w] ~= nil then
-        customTools[w](false)
+    if windowTools[w] then
+        windowTools[w](false)
     end
 
     table.remove(windows, engine.utils.find(windows, w))
@@ -552,8 +560,8 @@ end
 
 local function windowVisibilityChanged(w)
     if currentWindow == w then
-        if customTools[w] ~= nil then
-            customTools[w](w.visible)
+        if windowTools[w] ~= nil then
+            windowTools[w](w.visible)
         end
     end
 end
@@ -561,18 +569,17 @@ end
 ---comment
 ---@param window ProgramWindow
 local function windowFocusChanged(window)
-    --window.programViewport:queueEvent({ "mos_window_focus", window.focus })
     window.programViewport:queueEvent({ "mos_window_focus", window.focus })
     if window.focus == false then
         return
     end
 
     if currentWindow ~= window then
-        if customTools[currentWindow] ~= nil then
-            customTools[currentWindow](false)
+        if windowTools[currentWindow] ~= nil then
+            windowTools[currentWindow](false)
         end
-        if customTools[window] ~= nil then
-            customTools[window](true)
+        if windowTools[window] ~= nil then
+            windowTools[window](true)
         end
     end
 
@@ -751,7 +758,6 @@ end
 ---@return ProgramWindow
 function mos.editFile(path)
     local x, y, w, h = nextWindowTransform()
-    --return mos.launchProgram("Edit '" .. fs.getName(path) .. "'", toOsPath("programs/editWrapper.lua"), x, y, w, h, path)
     return mos.launchProgram("Edit '" .. fs.getName(path) .. "'", "/rom/programs/edit.lua", x, y, w, h, path)
 end
 
@@ -784,7 +790,6 @@ function mos.openDir(path)
     return w
 end
 
----comment
 ---options = {
 --- callback: function? (function that will be called when file is selected, will open file if callback is null)
 --- start: string? (start directory)
@@ -837,8 +842,49 @@ function windowDropdown:optionPressed(i)
     end
 end
 
-function mos.bindTool(window, callbackFunction)
-    customTools[window] = callbackFunction
+---@param window ProgramWindow
+---@param callback function
+function mos.bindWindowTool(window, callback)
+    if window.__type ~= "ProgramWindow" then
+        error("invalid window", 2)
+    end
+    windowTools[window] = callback
+end
+
+-- Audio
+---@param window ProgramWindow
+---@param callback function
+function mos.bindWindowAudio(window, callback)
+    if window.__type ~= "ProgramWindow" then
+        error("invalid window", 2)
+    end
+    mos.addAudioCallback(callback)
+    windowAudio[window] = callback
+end
+
+function mos.playAudioFile(path, volume)
+    local p = nil
+    p = mp.launchProcess(engine.screenBuffer, function ()
+        local dfpwm = require "cc.audio.dfpwm"
+        local speaker =  peripheral.find("speaker")
+
+        local decoder = dfpwm.make_decoder()
+        for input in io.lines(path, 16 * 1024) do
+            local decoded = decoder(input)
+            while not speaker.playAudio(decoded) do
+                os.pullEvent("speaker_audio_empty")
+            end
+        end
+        if not p.dead then
+            mp.endProcess(p)
+        end
+    end, nil, 0, 0, 0, 0)
+
+    return function ()
+        if not p.dead then
+            mp.endProcess(p)
+        end
+    end
 end
 
 local clock_timer_id
@@ -851,10 +897,59 @@ function clock:update()
     clock_timer_id = mp.startTimer(engine.p, 1.0)
 end
 
+---@type function[]
+local audioCallbacks = {}
+
+local speaker = peripheral.find("speaker")
+local bufferSize = 4096
+local samplesLeft = {}
+for i = 1, bufferSize do
+    samplesLeft[i] = 0
+end
+if speaker then
+    speaker.playAudio(samplesLeft)
+end
+
+
+function mos.addSamples(sLeft, sRight)
+    for i = 1, math.min(#sLeft, bufferSize) do
+        samplesLeft[i] = math.max(math.min(samplesLeft[i] + sLeft[i], 127), -128)
+    end
+end
+
+---Note: Use mos.bindWindowAudio instead
+---@param callback function
+function mos.addAudioCallback(callback)
+    table.insert(audioCallbacks, callback)
+end
+
+---Note: Use mos.bindWindowAudio instead
+---@param callback function
+function mos.removeAudioCallback(callback)
+    table.remove(audioCallbacks, engine.utils.find(audioCallbacks, callback))
+end
+
+
 function root:rawEvent(data)
     local event = data[1]
     if event == "timer" and data[2] == clock_timer_id then
         clock:update()
+    end
+
+    if event == "speaker_audio_empty" then
+        if not speaker then
+            return
+        end
+        local res = speaker.playAudio(samplesLeft)
+        for i = 1, bufferSize do
+            samplesLeft[i] = 0
+        end
+        for _, callback in ipairs(audioCallbacks) do
+            local ok, err = pcall(callback)
+            if not ok then
+                mos.log(("Audio Callback error '%s'"):format(err))
+            end
+        end
     end
 
     if event == "key" then
