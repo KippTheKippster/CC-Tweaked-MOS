@@ -1,6 +1,5 @@
 if mos == nil then
-    printError("DiskInfo must be opened with MOS!")
-    return
+    error("DiskInfo must be opened with MOS", 0)
 end
 
 ---@type Engine
@@ -16,24 +15,18 @@ end
 
 local main = engine.root:addVContainer()
 main.rendering = true
-main.fitToChildrenW = true
-main.fitToChildrenH = true
+main.expandW = true
+main.expandH = true
 main.anchorW = "center"
-main.anchorH = "center"
-
-local Line = engine.Control:newClass()
-Line._h = 1
 
 local w = 0
 local h = 1
 
 local function newLine(text)
-    local l = Line:new()
-    l.text = text
-    main:add(l)
+    local l = main:addControl(text)
     w = math.max(w, #text)
     h = h + 1
-    return l
+    l:resize()
 end
 
 if disk.hasAudio(diskName) then
@@ -41,7 +34,7 @@ if disk.hasAudio(diskName) then
     newLine("  Type - Audio")
     newLine("  Port - " .. diskName)
 else
-    newLine(" Label - " .. disk.getLabel(diskName) .. "\n")
+    newLine(" Label - " .. (disk.getLabel(diskName) or "") .. "\n")
     newLine("  Type - Data")
     local path = disk.getMountPath(diskName)
     newLine("  Free - " .. math.ceil(fs.getFreeSpace(path) / 1000) .. "/" .. math.ceil(fs.getCapacity(path) / 1000) .. "kB")
@@ -50,9 +43,12 @@ else
     newLine("    ID - " .. disk.getID(diskName))
 end
 
-mosWindow.minW = w - 1
-mosWindow.minH = h
+main:queueSort()
+main:queueDraw()
+
 mosWindow.w = w + 1
-mosWindow.h = h + 2
+mosWindow.h = h
+mosWindow.oldW = mosWindow.w
+mosWindow.oldH = mosWindow.h
 
 engine.start()

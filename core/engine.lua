@@ -234,10 +234,11 @@ function engine.start()
     local coInput = coroutine.create(fnInput)
 
     coroutine.resume(coDraw)
+
     while engine.running do
         freeQueue()
         local data = table.pack(os.pullEventRaw())
-        local ok, err = false, nil
+        local ok, err = false, "unkown error"
         if data[1] == "timer" and data[2] == drawTimerID then
             ok, err = coroutine.resume(coDraw, table.unpack(data))
         else
