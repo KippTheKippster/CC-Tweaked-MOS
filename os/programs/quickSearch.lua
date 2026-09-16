@@ -27,6 +27,7 @@ table.insert(qs.programs, { name = "Settings", path = "/mos/os/programs/settings
 table.insert(qs.programs, { name = "Paint", path = "/mos/os/programs/paint.lua" })
 table.insert(qs.programs, { name = "Lua", path = "/rom/programs/lua.lua" })
 table.insert(qs.programs, { name = "Time", path = "/rom/programs/time.lua" })
+table.insert(qs.programs, { name = "Music", path = "/mos/os/programs/music.lua" })
 
 local dirs = { "" }
 local index = 1
