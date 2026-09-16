@@ -169,7 +169,10 @@ mos.bindWindowTool(mosWindow, function(focus)
 end)
 
 do
-    local dir = ""--fs.getDir(mc.file) or ""
+    local dir = ""
+    if mc.file ~= "" then
+        dir = fs.getDir(mc.file)
+    end
     local files = fs.list(dir)
     local count = 1
     for _, file in ipairs(files) do
@@ -189,9 +192,9 @@ do
     end
 end
 
-mosWindow.text = "Music Player"
 if mc.file ~= "" then
     mc.loadFile(mc.file)
 end
+mosWindow.text = "Music Player"
 
 engine.start()

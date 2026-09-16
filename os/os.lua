@@ -924,16 +924,28 @@ end
 ---@type function[]
 local audioCallbacks = {}
 
-local speaker = peripheral.find("speaker")
+local function findSpeaker()
+    local speaker = peripheral.find("speaker")
+    if speaker then
+        return speaker, peripheral.getName(speaker)
+    else
+        return nil, ""
+    end
+end
+
+local function initSpeaker(speaker)
+    if speaker then
+        speaker.playAudio({0})
+    end
+end
+
+local speaker, speakerSide = findSpeaker()
+initSpeaker(speaker)
 local bufferSize = 4096
 local samplesLeft = {}
 for i = 1, bufferSize do
     samplesLeft[i] = 0
 end
-if speaker then
-    speaker.playAudio(samplesLeft)
-end
-
 
 function mos.addSamples(sLeft, sRight)
     for i = 1, math.min(#sLeft, bufferSize) do
@@ -960,8 +972,22 @@ function root:rawEvent(data)
         clock:update()
     end
 
-    if event == "speaker_audio_empty" then
+    if event == "peripheral" then
         if not speaker then
+            local p = peripheral.wrap(data[2])
+            if peripheral.hasType(p, "speaker") then
+                speaker = p
+                speakerSide = data[2]
+                initSpeaker(speaker)
+            end
+        end
+    elseif event == "peripheral_detach" then
+        if speakerSide == data[2] then
+            speaker, speakerSide = findSpeaker()
+            initSpeaker(speaker)
+        end
+    elseif event == "speaker_audio_empty" then
+        if not speaker or data[2] ~= speakerSide then
             return
         end
         local res = speaker.playAudio(samplesLeft)
@@ -974,9 +1000,7 @@ function root:rawEvent(data)
                 mos.log(("Audio Callback error '%s'"):format(err))
             end
         end
-    end
-
-    if event == "key" then
+    elseif event == "key" then
         if data[2] == keys.t then
             if engine.input.isKey(keys.leftCtrl) then
                 ---@type ProgramWindow
