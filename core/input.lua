@@ -83,6 +83,19 @@ return function(engine, utils)
         return x - c.gx, y - c.gy
     end
 
+    ---@param c Control?
+    ---@param fn function
+    local function recursiveControlMethodUp(c, fn)
+        if not c then
+            return
+        end
+
+        local ok = fn(c)
+        if ok then
+            recursiveControlMethodUp(c.parent, fn)
+        end
+    end
+
     ---@param key number
     function input.isKeyHeld(key)
         return heldKeys[key] ~= nil
@@ -128,7 +141,7 @@ return function(engine, utils)
             end
         end
 
-        if isControlOnPoint(root, x, y) and root.mouseIgnore == false then
+        if isControlOnPoint(root, x, y) and root.mouseFilter ~= "ignore" then
             return root
         end
 
@@ -268,12 +281,18 @@ return function(engine, utils)
         input.setFocusControl(input.getFocusOwner(c))
         input.setDownControl(c)
         if c and isControlValid(c) then
-            c:click(b, toLocal(c, x, y))
+            recursiveControlMethodUp(c, function (p)
+                p:click(b, toLocal(p, x, y))
+                return p.mouseFilter == "pass"
+            end)
         end
 
         if c and isControlValid(c) and c == o then
             if deltaTime < 0.33 then
-                c:doubleClick(b, toLocal(c, x, y))
+                recursiveControlMethodUp(c, function (p)
+                    p:doubleClick(b, toLocal(p, x, y))
+                    return p.mouseFilter == "pass"
+                end)
                 mouseClickTime = 0
             end
         end
@@ -305,8 +324,11 @@ return function(engine, utils)
         local validClickControl = toValidControl(clickControl)
 
         if clickControl and isControlValid(clickControl) then
-            local lx, ly = toLocal(clickControl, x, y)
-            clickControl:drag(b, lx, ly, dx, dy)
+            recursiveControlMethodUp(clickControl, function (p)
+                local lx, ly = toLocal(p, x, y)
+                p:drag(b, lx, ly, dx, dy)
+                return p.mouseFilter == "pass"
+            end)
         end
 
         local c = input.getControlFromPoint(x, y)

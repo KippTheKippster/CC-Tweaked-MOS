@@ -99,7 +99,7 @@ root.rendering = false
 root.__name = "root"
 root.w = initialW
 root.h = initialH
-root.mouseIgnore = true
+root.mouseFilter = "ignore"
 
 engine.running = false
 engine.queueRedraw = false

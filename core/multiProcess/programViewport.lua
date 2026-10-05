@@ -9,7 +9,6 @@ local ProgramViewport = control:newClass()
 ProgramViewport.__type = "ProgramViewport"
 
 ProgramViewport.rendering = false
-ProgramViewport.mouseIgnore = false
 ProgramViewport.program = nil
 ProgramViewport.parentTerm = nil
 ProgramViewport.terminated = false

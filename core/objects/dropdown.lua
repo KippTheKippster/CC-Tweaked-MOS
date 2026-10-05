@@ -28,7 +28,7 @@ function Dropdown:init(text)
     self.list.propagateFocusUp = true
     self.list.dragSelectable = true
     self.list.shadow = self.optionShadow
-    self.list.mouseIgnore = true
+    self.list.mouseFilter = "ignore"
 
     self.list.rendering = true
 

@@ -423,7 +423,7 @@ selectionBox.text = ""
 selectionBox.w = 0
 selectionBox.h = 0
 selectionBox.visible = false
-selectionBox.mouseIgnore = true
+selectionBox.mouseFilter = "ignore"
 selectionBox.dragging = false
 selectionBox.style = selectionBox.style:unique()
 selectionBox.style.border = true
@@ -495,7 +495,7 @@ function sprite:rawEvent(data)
         selectionBox.w = w
         selectionBox.h = h
         selectionBox.visible = true
-        selectionBox.mouseIgnore = false
+        selectionBox.mouseFilter = "stop"
 
         paint.selectionCanvas = paint.copyCanvas
     end
@@ -562,7 +562,7 @@ function sprite:click(b, x, y)
         selectionBox.y = y - 1
         selectionBox.w = 1
         selectionBox.h = 1
-        selectionBox.mouseIgnore = true
+        selectionBox.mouseFilter = "ignore"
         selectionBox.visible = true
     elseif paint.tool == "bucket" then
         local dirs = {
@@ -616,7 +616,7 @@ function sprite:up()
         if selectionBox.w == 1 and selectionBox.h == 1 then
             selectionBox.visible = false
         else
-            selectionBox.mouseIgnore = false
+            selectionBox.mouseFilter = "stop"
             if selectionBox.w < 1 then -- Ensure that size isn't negative
                 local x = selectionBox.x
                 local w = selectionBox.w

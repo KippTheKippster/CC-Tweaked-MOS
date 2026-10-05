@@ -116,7 +116,7 @@ end
 local list = qs:addDropdown()
 list.propagateFocusUp = true
 list.rendering = false
-list.mouseIgnore = true
+list.mouseFilter = "ignore"
 qs.list = list
 
 local icon = qs:addControl()

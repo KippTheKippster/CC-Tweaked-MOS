@@ -75,7 +75,11 @@ Control.centerText = false
 Control.focus = false
 Control.propagateFocusUp = false
 Control.clipText = true
-Control.mouseIgnore = false
+--- Determines how mouse input interacts with the control
+--- stop   - input will be received (default)
+--- pass   - input will be received and passed to the parent control
+--- ignore - input will be ignored  and passed to the parent control
+Control.mouseFilter = "stop"
 Control.rendering = true
 Control.dragSelectable = false
 Control.topLevel = false

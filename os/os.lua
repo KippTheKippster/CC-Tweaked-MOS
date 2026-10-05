@@ -414,13 +414,13 @@ end
 
 
 local focusContainer = engine.root:addControl()
-focusContainer.mouseIgnore = true
+focusContainer.mouseFilter = "ignore"
 focusContainer.rendering = false
 focusContainer.expandW = true
 focusContainer.expandH = true
 
 local windowContainer = focusContainer:addControl()
-windowContainer.mouseIgnore = true
+windowContainer.mouseFilter = "ignore"
 windowContainer.rendering = false
 windowContainer.expandW = true
 windowContainer.expandH = true
@@ -428,7 +428,7 @@ windowContainer.expandH = true
 --Top Bar
 local topBar = focusContainer:addControl("")
 topBar.rendering = true
-topBar.mouseIgnore = true
+topBar.mouseFilter = "ignore"
 topBar.expandW = true
 --[[
 function topBar:getStyle()
@@ -445,7 +445,7 @@ local toolBar = topBar:addHContainer()
 toolBar.expandW = true
 toolBar.h = 1
 toolBar.separation = 1
-toolBar.mouseIgnore = true
+toolBar.mouseFilter = "ignore"
 toolBar.inheritStyle = true
 
 local function toolbarChildFocusChanged(c)

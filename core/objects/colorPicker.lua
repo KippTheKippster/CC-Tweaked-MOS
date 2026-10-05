@@ -67,7 +67,7 @@ function ColorPicker:init(text, color)
     self.list.visible = false
     self.list.rendering = false
     self.list.propagateFocusUp = true
-    self.list.mouseIgnore = true
+    self.list.mouseFilter = "ignore"
 
     self.list.y = 1
     for i = 0, 15 do
