@@ -114,13 +114,13 @@ function qs:focusChanged()
 end
 
 local list = qs:addDropdown()
-list.propogateFocusUp = true
+list.propagateFocusUp = true
 list.rendering = false
 list.mouseIgnore = true
 qs.list = list
 
 local icon = qs:addControl()
-icon.propogateFocusUp = true
+icon.propagateFocusUp = true
 icon.text = string.char(187)
 icon.fitToText = false
 icon.w = 2

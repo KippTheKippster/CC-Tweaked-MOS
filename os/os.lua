@@ -502,7 +502,7 @@ function mos.refreshMosDropdown()
             x.h = 1
             x.anchorW = "right"
             x.dragSelectable = true
-            x.propogateFocusUp = true
+            x.propagateFocusUp = true
             x.pressed = function()
                 mos.removeFileFavorite(k)
                 mos.refreshMosDropdown()
@@ -635,7 +635,7 @@ local function addWindow(w)
     x.h = 1
     x.anchorW = "right"
     x.dragSelectable = true
-    x.propogateFocusUp = true
+    x.propagateFocusUp = true
     x.pressed = function()
         w:close()
     end
@@ -716,9 +716,9 @@ end
 ---comment
 ---@return string
 function mos.getInputFileOpenModifier()
-    if engine.input.isKey(keys.leftCtrl) then
+    if engine.input.isKeyHeld(keys.leftCtrl) then
         return "edit"
-    elseif engine.input.isKey(keys.leftShift) then
+    elseif engine.input.isKeyHeld(keys.leftShift) then
         return "args"
     else
         return "none"
@@ -1002,19 +1002,19 @@ function root:rawEvent(data)
         end
     elseif event == "key" then
         if data[2] == keys.t then
-            if engine.input.isKey(keys.leftCtrl) then
+            if engine.input.isKeyHeld(keys.leftCtrl) then
                 ---@type ProgramWindow
-                local focus =  engine.input.getFocus()
+                local focus =  engine.input.getFocusControl()
                 if engine.utils.contains(windows, focus) then
                     focus:close()
                 end
             end
         elseif data[2] == keys.f4 then
             if currentWindow ~= nil then
-                currentWindow:setFullscreen(currentWindow.fullscreen == false)
+                currentWindow.fullscreen = currentWindow.fullscreen == false
             end
         elseif data[2] == keys.s then
-            if engine.input.isKey(keys.leftAlt) then
+            if engine.input.isKeyHeld(keys.leftAlt) then
                 if quickSearch:isOpen() then
                     quickSearch:close()
                 else
@@ -1028,7 +1028,7 @@ function root:rawEvent(data)
             quickSearch:previous()
         elseif data[2] == keys.down then
             quickSearch:next()
-        elseif engine.input.isKey(keys.leftAlt) then
+        elseif engine.input.isKeyHeld(keys.leftAlt) then
             for i = 1, #toolBar.children do
                 if data[2] == keys.one + (i - 1) then
                     if toolBar.children[i].next then

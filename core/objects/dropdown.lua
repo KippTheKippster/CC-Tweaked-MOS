@@ -25,7 +25,7 @@ function Dropdown:init(text)
     self.list.topLevel = true
     self.list.y = self.h
     self.list.visible = false
-    self.list.propogateFocusUp = true
+    self.list.propagateFocusUp = true
     self.list.dragSelectable = true
     self.list.shadow = self.optionShadow
     self.list.mouseIgnore = true
@@ -51,16 +51,16 @@ end
 
 function Dropdown:rawEvent(data)
     local event = data[1]
-    if event == "mouse_up" then
+    if event == "mouse_up" and data[2] == 1 then
         self:close()
     end
 end
 
 function Dropdown:focusChanged()
     if self.focus == false then
-        self:up()
+        self:releaseDown()
         if self.shortcutSelection ~= nil then
-            self.shortcutSelection:up()
+            self.shortcutSelection:releaseDown()
         end
 
         self:close()
@@ -85,15 +85,12 @@ function Dropdown:addToList(text, clickable)
     b.text = text
     b.h = 1
     b.dragSelectable = true
-    b.propogateFocusUp = true
+    b.propagateFocusUp = true
     b.marginL = 1
     b.marginR = 1
     b.expandW = true
     local down = b.down
     b.down = function(o)
-        if self.shortcutSelection then
-            self.shortcutSelection:up()
-        end
         down(o)
         self.shortcutSelection = o
     end
@@ -150,7 +147,7 @@ function Dropdown:down()
     button.down(self)
     self.list.visible = true
     if self.shortcutSelection and self.shortcutSelection ~= self then
-        self.shortcutSelection:up()
+        self.shortcutSelection:releaseDown()
     end
 
     self.shortcutSelection = self
@@ -187,7 +184,6 @@ function Dropdown:next()
     end
 
     if self.shortcutSelection ~= nil then
-        self.shortcutSelection:up()
         local idx = utils.find(self.list.children, self.shortcutSelection)
 
         if idx == nil then
@@ -208,7 +204,7 @@ function Dropdown:next()
         self.shortcutSelection = self
     end
 
-    self.shortcutSelection:down()
+    self.shortcutSelection:grabDown()
     self.shortcutSelection:grabFocus()
 end
 
@@ -222,7 +218,6 @@ function Dropdown:previous()
     end
 
     if self.shortcutSelection ~= nil then
-        self.shortcutSelection:up()
         local idx = utils.find(self.list.children, self.shortcutSelection)
 
         if idx == nil then
@@ -243,14 +238,14 @@ function Dropdown:previous()
         self.shortcutSelection = self
     end
 
-    self.shortcutSelection:down()
+    self.shortcutSelection:grabDown()
     self.shortcutSelection:grabFocus()
 end
 
 function Dropdown:release()
     if self:isOpened() == true then
         if self.shortcutSelection ~= nil then
-            self.shortcutSelection:up()
+            self.shortcutSelection:releaseDown()
             self.shortcutSelection:pressed()
         end
 

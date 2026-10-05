@@ -1,8 +1,8 @@
 ---@param container Container
----@param collision Collision
+---@param utils Utils
 ---@param input Input
 ---@return ScrollContainer
-return function(container, collision, input, style, styleDown)
+return function(container, utils, input, style, styleDown)
     ---@class ScrollContainer : Container
     local ScrollContainer = container:newClass()
     ScrollContainer.__type = "ScrollContainer"
@@ -158,7 +158,7 @@ return function(container, collision, input, style, styleDown)
         if event == "mouse_click" then
             local x = data[3]
             local y = data[4]
-            if collision.inArea(x, y, self.barStartX, self.barStartY, self.barEndX - self.barStartX, self.barEndY - self.barStartY) then
+            if utils.inArea(x, y, self.barStartX, self.barStartY, self.barEndX - self.barStartX, self.barEndY - self.barStartY) then
                 self.barDown = true
                 self:queueDraw()
                 self._mOffset = self.barStartY - y - 1

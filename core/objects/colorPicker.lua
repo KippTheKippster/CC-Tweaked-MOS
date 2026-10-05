@@ -44,7 +44,7 @@ local function addColor(p, color)
     b.h = 1
     b.text = ""
     b.dragSelectable = true
-    b.propogateFocusUp = true
+    b.propagateFocusUp = true
     b.down = function (self)
         p.color = color
         p:queueDraw()
@@ -66,7 +66,7 @@ function ColorPicker:init(text, color)
     self.list.h = 1
     self.list.visible = false
     self.list.rendering = false
-    self.list.propogateFocusUp = true
+    self.list.propagateFocusUp = true
     self.list.mouseIgnore = true
 
     self.list.y = 1

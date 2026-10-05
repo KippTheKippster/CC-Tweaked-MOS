@@ -260,13 +260,13 @@ end
 
 function FileButton:down()
     engine.Button.down(self)
-    if self.selected and not engine.input.isKey(keys.leftShift) then
-        if not engine.input.isKey(keys.leftCtrl) then
+    if self.selected and not engine.input.isKeyHeld(keys.leftShift) then
+        if not engine.input.isKeyHeld(keys.leftCtrl) then
             fe.unselectFileButton(self, true)
         end
     else
         local focus = fe.selection[1]
-        if focus and engine.input.isKey(keys.leftShift) then
+        if focus and engine.input.isKeyHeld(keys.leftShift) then
             fe.clearSelection()
             local from = engine.utils.find(fileContainer.children, focus)
             local to   = engine.utils.find(fileContainer.children, self)
@@ -279,7 +279,7 @@ function FileButton:down()
                 end
             end
         else
-            fe.selectFileButton(self, not engine.input.isKey(keys.leftCtrl))
+            fe.selectFileButton(self, not engine.input.isKeyHeld(keys.leftCtrl))
         end
     end
 end
@@ -365,8 +365,8 @@ function fe.newFileButton(name)
             type = "dir",
             size = #fs.list(path)
         }
-        fileButton.doublePressed = function(o)
-            if engine.input.isKey(keys.leftShift) then
+        fileButton.doubleClick = function(o)
+            if engine.input.isKeyHeld(keys.leftShift) then
                 mos.openDir(o.path)
             else
                 fe.openDir(o.path)
@@ -378,7 +378,7 @@ function fe.newFileButton(name)
             type = "file",
             size = fs.getSize(path)
         }
-        fileButton.doublePressed = function(o)
+        fileButton.doubleClick = function(o)
             fe.openFile(o.path, mos.getInputFileOpenModifier())
         end
     end
@@ -1074,7 +1074,7 @@ local function input(data)
         end
     end
 
-    if engine.input.isInputGrabbed() then
+    if engine.input.getInputControl() then
         return
     end
 
@@ -1091,7 +1091,7 @@ local function input(data)
             end
         end
 
-        if engine.input.isKey(keys.leftCtrl) then
+        if engine.input.isKeyHeld(keys.leftCtrl) then
             if k == keys.x then
                 fe.cut()
             elseif k == keys.c then

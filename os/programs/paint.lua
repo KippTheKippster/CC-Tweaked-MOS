@@ -444,11 +444,11 @@ function sprite:rawEvent(data)
     local event = data[1]
     if event == "term_resize" then
         paint.centerSprite()
-    elseif event == "key" and not engine.input.isInputGrabbed() then
+    elseif event == "key" and not engine.input.getInputControl() then
         local key = data[2]
-        if engine.input.isKey(keys.leftCtrl) then
+        if engine.input.isKeyHeld(keys.leftCtrl) then
             if key == keys.s then
-                if engine.input.isKey(keys.leftShift) then
+                if engine.input.isKeyHeld(keys.leftShift) then
                     ui.saveAs()
                 else
                     ui.save()
@@ -480,7 +480,7 @@ function sprite:rawEvent(data)
                 end
             end
         end
-    elseif event == "paste" and not engine.input.isInputGrabbed() then
+    elseif event == "paste" and not engine.input.getInputControl() then
         if paint.copyCanvas == nil then
             return
         end
@@ -549,7 +549,7 @@ function sprite:setPixel(b, x, y)
     end
 end
 
-function sprite:down(b, x, y)
+function sprite:click(b, x, y)
     if paint.tool == "pen" then
         sprite:setPixel(b, x, y)
     elseif paint.tool == "selection" then
@@ -601,7 +601,7 @@ function sprite:down(b, x, y)
     end
 end
 
-function sprite:drag(b, x, y, rx, ry)
+function sprite:drag(b, x, y, dx, dy)
     if x < 1 or y < 1 or x > self.w or y > self.h then return end
     if paint.tool == "pen" then
         sprite:setPixel(b, x, y)
@@ -637,9 +637,9 @@ function sprite:up()
     end
 end
 
-function selectionBox:drag(b, x, y, rx, ry)
-    self.x = self.x + rx
-    self.y = self.y + ry
+function selectionBox:drag(b, x, y, dx, dy)
+    self.x = self.x + dx
+    self.y = self.y + dy
 end
 
 function selectionBox:render()
@@ -749,7 +749,7 @@ for i = 0, 16 do
         c.style.backgroundColor = 2 ^ i
         c.colorIndex = c.style.backgroundColor
     end
-    c.down = function(_, b)
+    c.click = function(_, b)
         if b == 1 then
             paint.colorL = c.colorIndex
             colorL.style = c.style

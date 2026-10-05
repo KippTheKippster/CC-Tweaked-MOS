@@ -18,17 +18,18 @@ engine.screenBuffer = screenBuffer
 
 ---@type Object
 local object = require(coreDotPath .. ".object")
-local collision = require(coreDotPath .. ".collision")
----@type Input
-local input = require(coreDotPath .. ".input")(engine, collision)
 ---@type Utils
 local utils = require(coreDotPath .. ".utils")
+---@type Input
+local input = require(coreDotPath .. ".input")(engine, utils)
 
 ---@type Input
 engine.input = input
 ---@type Utils
 engine.utils = utils
 engine.freeQueue = {}
+
+local topLevelList = {}
 
 ---@type Style
 local style = require(coreDotPath .. ".style")
@@ -84,7 +85,7 @@ engine.HContainer = requireObject("hContainer", engine.Container)
 ---@type FlowContainer
 engine.FlowContainer = requireObject("flowContainer", engine.Container)
 ---@type ScrollContainer
-engine.ScrollContainer = requireObject("scrollContainer", engine.Container, collision, input, styleScroll, styleScrollDown)
+engine.ScrollContainer = requireObject("scrollContainer", engine.Container, utils, input, styleScroll, styleScrollDown)
 ---@type WindowControl
 engine.WindowControl = requireObject("windowControl", engine.Control, engine.Button, style, style, styleDown)
 ---@type LineEdit
@@ -124,7 +125,7 @@ end
 local function drawTree(o, topLevelList)
     if o.visible == false then return end
     if o.topLevel and topLevelList then
-        table.insert(topLevelList, o) -- TODO make list persistent
+        table.insert(topLevelList, o)
     else
         o:draw()
         local c = o.children
@@ -143,7 +144,7 @@ local function redrawScreen()
         term.clear()
     end
 
-    local topLevelList = {}
+    topLevelList = {}
     drawTree(engine.root, topLevelList)
     for i, control in ipairs(topLevelList) do
         drawTree(control, nil)
@@ -191,8 +192,8 @@ end
 local fnInput = function()
     while engine.running do
         term.redirect(parentTerm)
-        local event = input.processInput()
-        if event == "term_resize" then
+        local data = input.pullEvent()
+        if data[1] == "term_resize" then
             resizeBuffer(parentTerm.getSize())
         end
     end
@@ -260,6 +261,10 @@ end
 
 function engine.stop()
     engine.running = false
+end
+
+function engine.getTopLevelControls()
+    return topLevelList
 end
 
 ---@param mp MultiProgram

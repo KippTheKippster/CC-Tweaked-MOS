@@ -8,7 +8,6 @@ return function(engine, control, button, style, styleFocus, styleDown)
 local WindowControl = control:newClass()
 WindowControl.__type = "WindowControl"
 
-WindowControl.draggable = true
 WindowControl.clipText = true
 WindowControl.exitButton = nil
 WindowControl.scaleButton = nil
@@ -81,7 +80,7 @@ function WindowControl:init(text)
     exit.w = 1
     exit.h = 1
     exit.dragSelectable = true
-    exit.propogateFocusUp = true
+    exit.propagateFocusUp = true
     exit.pressed = function(o)
         self:close()
     end
@@ -91,9 +90,9 @@ function WindowControl:init(text)
     scale.inheritStyle = true
     scale.w = 1
     scale.h = 1
-    scale.propogateFocusUp = true
+    scale.propagateFocusUp = true
 
-    scale.drag = function(o, b, x, y, rx, ry)
+    scale.drag = function(o, b, x, y, dx, dy)
         local gx = x + self.gx - 1
         local gy = y + self.gy - 1
 
@@ -116,7 +115,7 @@ function WindowControl:init(text)
         end
     end
 
-    scale.doublePressed = function(o)
+    scale.doubleClick = function(o)
         o.parent.fullscreen = true
     end
 
@@ -125,7 +124,7 @@ function WindowControl:init(text)
     min.inheritStyle = true
     min.w = 1
     min.h = 1
-    min.propogateFocusUp = true
+    min.propagateFocusUp = true
     min.dragSelectable = true
     min.pressed = function(o)
         self.visible = false
@@ -139,8 +138,9 @@ function WindowControl:close()
     self:queueFree()
 end
 
-function WindowControl:drag(b, x, y, rx, ry)
-    control.drag(self, b, x, y, rx, ry)
+function WindowControl:drag(b, x, y, dx, dy)
+    self.x = self.x + dx
+    self.y = self.y + dy
     self.w = self.oldW
     self.h = self.oldH
     self.oldW = self.w
@@ -183,6 +183,7 @@ function WindowControl:getStyle()
         return self.style
     end
 end
+
 
 function WindowControl:closed() end
 

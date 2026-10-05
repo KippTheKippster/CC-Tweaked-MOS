@@ -108,7 +108,6 @@ function ProgramViewport:unhandledEvent(data)
     local args = data
     if event == "mouse_click" or event == "mouse_drag" or event == "mouse_up" then
         if self.parent:inFocus() == false then return { true } end
-        if input.getCurrentControl() ~= self then return { true } end
         local button, x, y = data[2], data[3], data[4]
         local offsetX, offsetY = self.program.window.getPosition()
 
@@ -177,7 +176,7 @@ function ProgramViewport:unhandledEvent(data)
     if self.terminated == true then
         if self.parent:inFocus() then
             if event == "char" then
-                input.stopRawEventPropopgation() -- Prevent the char event to be sent to the next auto focus window 
+                input.cancelEventPropagation() -- Prevent the char event to be sent to the next auto focus window 
                 self.parent:close()
             elseif event == "key" then
                 local k = data[2]

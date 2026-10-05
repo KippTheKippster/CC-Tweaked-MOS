@@ -29,7 +29,7 @@ function ProgramWindow:addViewport(pv)
     self:add(pv)
     pv.y = 1
     pv.h = pv.h - 1
-    pv.propogateFocusUp = true
+    pv.propagateFocusUp = true
 end
 
 function ProgramWindow:close()

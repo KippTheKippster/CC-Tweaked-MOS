@@ -1,405 +1,396 @@
+local expect = require "cc.expect"
+local field = expect.field
+expect = expect.expect
+
 ---@param engine Engine
----@param collision Collision
-return function(engine, collision)
-local targetTerm = term.current()
-local mouse = {}
----@type Control?
-mouse.current = nil
----@type Control?
-mouse.clickControl = nil
----@type Control?
-mouse.cursorControl = nil
----@type Control?
-mouse.inputControl = nil
-mouse.clickTime = os.clock()
-mouse.doublePressed = false
-mouse.dragX = 0
-mouse.dragY = 0
+---@param utils Utils
+return function(engine, utils)
+    ---@class Input
+    local input = {}
 
-local propogateCancel = false
+    ---@type table<integer, boolean>
+    local heldKeys = {}
+    ---@type table<integer, boolean>
+    local heldMouseButtons = {}
 
-local function isValid(o)
-    if o == nil then
-        return false
-    elseif type(o) == "function" then
-        return true
-    elseif o.isValid == nil or o:isValid() == true then
-        return true
-    else
-        return false
-    end
-end
+    local mouseX, mouseY = 0, 0
+    local mouseClickTime = 0.0
 
----comment
----@param c Control
----@param x number
----@param y number
----@return boolean
-local function isControlInPoint(c, x, y)
-    return collision.inArea(
-        x, y, math.floor(c.gx) + 1, math.floor(c.gy) + 1, math.floor(c.w) - 1, math.floor(c.h) - 1
-    )
-end
+    ---@type (function|table)[]
+    local rawEventListeners = {}
+    local propagateCancel = false
 
-local function getBranchInPoint(root, x, y)
-    if root.visible == false then
-        return nil
+    local
+    ---@type Control?
+    focusControl,  -- Control that has focus
+    ---@type Control?
+    cursorControl, -- Control that controls blinking cursor (control:updateCursor() is called)
+    ---@type Control?
+    inputControl,  -- Control that receives event input (control:input() is called)
+    ---@type Control?
+    downControl,   -- Control that is being held down
+    ---@type Control?
+    clickControl   -- Control that was last clicked
+
+    local function inTerm(x, y)
+        expect(1, x, "number")
+        expect(2, y, "number")
+        local w, h = term.getSize()
+        return utils.inArea(x, y, 1, 1, w, h)
     end
 
-    for i = 1, #root.children do
-        local child = root:getChild(#root.children - i + 1)
-        local branchInPoint = getBranchInPoint(child, x, y)
-        if branchInPoint then
-            return branchInPoint
-        end
-    end
-
-    if isControlInPoint(root, x, y) and root.mouseIgnore == false then
-        return root
-    end
-
-    return nil
-end
-
----Returns a list with all the root top level controls
----@param root Control
----@param list table
----@return table
-local function getTopLevelControls(root, list)
-    for i = 1, #root.children do
-        local child = root:getChild(#root.children - i + 1)
-        if child.topLevel and child:isVisible() then
-            table.insert(list, child)
+    ---@param c Control?
+    ---@return boolean
+    local function isControlValid(c)
+        if type(c) ~= "table" then
+            return false
+        elseif c.isValid ~= nil and c:isValid() then
+            return true
         else
-            getTopLevelControls(child, list)
+            return false
         end
     end
 
-    return list
-end
-
----Returns the deepest control in branch that overlaps point (x, y)
----@param x number
----@param y number
----@return Control?
-function mouse.getControlInPoint(x, y)
-    local topControls = getTopLevelControls(engine.root, {})
-    for _, control in ipairs(topControls) do
-        local branch = getBranchInPoint(control, x, y)
-        if branch then
-            return branch
+    ---@param c Control?
+    ---@return Control?
+    local function toValidControl(c)
+        if isControlValid(c) then
+            return c
+        else
+            return nil
         end
     end
 
-    return getBranchInPoint(engine.root, x, y)
-end
+    local function expectControl(index, c, allowNil)
+        local err = true
+        local valid = toValidControl(c)
+        if c == nil then
+            err = allowNil ~= true
+        elseif valid then
+            err = false
+        end
 
----Returns the focus owner of control c
----@param c Control
----@return Control?
-function mouse.getFocusOwner(c)
-    if c == nil then
+        if err then
+            error(("bad argument #%d (Control expected, got %s)"):format(index, type(c)), 3)
+        end
+    end
+
+    ---@param c Control
+    ---@param x number
+    ---@param y number
+    local function toLocal(c, x, y)
+        expectControl(1, c)
+        return x - c.gx, y - c.gy
+    end
+
+    ---@param key number
+    function input.isKeyHeld(key)
+        return heldKeys[key] ~= nil
+    end
+
+    ---@param button number
+    function input.isMouseButtonHeld(button)
+        return heldMouseButtons[button] ~= nil
+    end
+
+    function input.cancelEventPropagation()
+        propagateCancel = true
+    end
+
+    ---@param listener function|table
+    function input.addRawEventListener(listener)
+        expect(1, listener, "function", "table")
+        table.insert(rawEventListeners, listener)
+    end
+
+    ---@param listener function|table
+    function input.removeRawEventListener(listener)
+        expect(1, listener, "function", "table")
+        table.remove(rawEventListeners, engine.utils.find(rawEventListeners, listener))
+    end
+
+    local function isControlOnPoint(c, x, y)
+        return utils.inArea(
+            x, y, math.floor(c.gx) + 1, math.floor(c.gy) + 1, math.floor(c.w) - 1, math.floor(c.h) - 1
+        )
+    end
+
+    local function getBranchFromPoint(root, x, y)
+        if root.visible == false then
+            return nil
+        end
+
+        for i = 1, #root.children do
+            local child = root:getChild(#root.children - i + 1)
+            local branchInPoint = getBranchFromPoint(child, x, y)
+            if branchInPoint then
+                return branchInPoint
+            end
+        end
+
+        if isControlOnPoint(root, x, y) and root.mouseIgnore == false then
+            return root
+        end
+
         return nil
-    elseif c:isValid() == false then
-        return nil
-    elseif c.propogateFocusUp == false then
-        return c
-    else
-        return mouse.getFocusOwner(c.parent)
-    end
-end
-
-function mouse.changeFocus(o)
-    local owner = mouse.getFocusOwner(o)
-    local currentOwner = mouse.getFocusOwner(mouse.current)
-
-    if owner == currentOwner then
-        mouse.current = o
-        return
     end
 
-    if currentOwner ~= nil then
-        currentOwner.focus = false
+    ---@param x number
+    ---@param y number
+    ---@return Control?
+    function input.getControlFromPoint(x, y)
+        -- Top level
+        for _, c in ipairs(engine.getTopLevelControls()) do
+            local branch = getBranchFromPoint(c, x, y)
+            if isControlValid(branch) then
+                return branch
+            end
+        end
+
+        return getBranchFromPoint(engine.root, x, y)
     end
 
-    if owner ~= nil then
-        owner.focus = true
+    ---Returns the focus owner of control c
+    ---@param c Control|nil
+    ---@return Control|nil
+    function input.getFocusOwner(c)
+        if not c or not isControlValid(c) then
+            return nil
+        elseif not c.propagateFocusUp then
+            return c
+        else
+            return input.getFocusOwner(c.parent)
+        end
     end
 
-    if currentOwner ~= nil then
-        currentOwner:focusChanged()
-        currentOwner:emitSignal(currentOwner.focusChangedSignal)
+    --#region Control
+
+    ---@param c Control|nil
+    function input.setFocusControl(c)
+        expectControl(1, c, true)
+
+        if c == focusControl then
+            return
+        end
+
+        local o = focusControl
+        focusControl = c
+
+        if o and isControlValid(o) then
+            o.focus = false
+            o:focusChanged()
+            o:emitSignal(o.focusChangedSignal)
+        end
+
+        if c and isControlValid(c) then
+            c.focus = true
+            c:focusChanged()
+            c:emitSignal(c.focusChangedSignal)
+        end
     end
 
-    if owner ~= nil then
-        owner:focusChanged()
-        owner:emitSignal(owner.focusChangedSignal)
+    ---@return Control|nil
+    function input.getFocusControl()
+        return toValidControl(focusControl)
     end
 
-    mouse.current = o
-end
+    ---@param c Control|nil
+    function input.setCursorControl(c)
+        expectControl(1, c, true)
+        cursorControl = c
+    end
 
-function mouse.inTerm(x, y)
-    local w, h = targetTerm.getSize()
-    return collision.inArea(x, y, 1, 1, w, h)
-end
+    ---@return Control|nil
+    function input.getCursorControl()
+        return toValidControl(cursorControl)
+    end
 
-function mouse.click(button, x, y)
-    mouse.dragX = x
-    mouse.dragY = y
-    local c = mouse.getControlInPoint(x, y)
-    mouse.clickControl = c
-    if mouse.current ~= c then -- If user clicks on a new control (or nothing)
-        mouse.clickTime = os.clock()
-        mouse.changeFocus(c)
+    ---@param c Control|nil
+    function input.setInputControl(c)
+        expectControl(1, c, true)
+        inputControl = c
+    end
+
+    ---@return Control|nil
+    function input.getInputControl()
+        return toValidControl(inputControl)
+    end
+
+    function input.setDownControl(c)
+        expectControl(1, c, true)
+
+        if c == downControl then
+            return
+        end
+
+        if downControl and isControlValid(downControl) then
+            downControl:up()
+        end
+
+        downControl = c
         if c then
-            c:down(button, x - c.gx, y - c.gy)
-        end
-    elseif c then -- If user clicks on the same control
-        c:down(button, x - c.gx, y - c.gy)
-        local time = os.clock()
-        local delta = time - mouse.clickTime
-        mouse.clickTime = time
-        if delta < 0.33 then
-            c:doublePressed(button, x - c.gx, y - c.gy)
-        end
-    end
-end
-
-local function grabControlFocus(c)
-    mouse.changeFocus(c)
-end
-
-local function releaseControlFocus(c)
-    mouse.changeFocus(nil)
-end
-
-local function setCursorControl(c)
-    mouse.cursorControl = c
-end
-
-local function getCursorControl()
-    if isValid(mouse.cursorControl) then
-        return mouse.cursorControl
-    else
-        return nil
-    end
-end
-
----comment
----@param c Control?
-local function setInputControl(c)
-    mouse.inputControl = c
-end
-
----@return Control?
-local function getInputControl()
-    if isValid(mouse.inputControl) then
-        return mouse.inputControl
-    else
-        return nil
-    end
-end
-
----@boolean
-local function isInputGrabbed()
-    return getInputControl() ~= nil
-end
-
-function mouse.up(button, x, y)
-    mouse.clickControl = nil
-    if isValid(mouse.current) == false then return end
-    local c = mouse.current
-    mouse.current:up(button, x - c.gx, y - c.gy)
-    mouse.current:pressed(button, x - c.gx, y - c.gy)
-end
-
-function mouse.drag(button, x, y)
-    if isValid(mouse.current) == false then return end
-    local relativeX = x - mouse.dragX
-    local relativeY = y - mouse.dragY
-    local c = mouse.getControlInPoint(x, y)
-    if c ~= nil and c ~= mouse.current and c.dragSelectable == true and mouse.current.dragSelectable == true then
-        mouse.current:up(button, x, y)
-        mouse.changeFocus(c)
-        c:down(button, x - c.gx, y - c.gy)
-    end
-    mouse.dragX = x
-    mouse.dragY = y
-    mouse.current:drag(button, x - mouse.current.gx, y - mouse.current.gy, relativeX, relativeY)
-end
-
-function mouse.scroll(dir, x, y)
-    local function scrollControl(c)
-        if isControlInPoint(c, x, y) == true then
-            c:scroll(dir, x, y)
-        end
-
-        for i = 1, #c.children do
-            scrollControl(c.children[i])
+            c:down()
         end
     end
 
-    scrollControl(engine.root)
-end
-
-local function getFocus()
-    return mouse.getFocusOwner(mouse.current)
-end
-
-local function getCurrentControl()
-    return mouse.current
-end
-
-local keys = {}
-
-local function isKey(key)
-    return keys[key] == true
-end
-
-local function key(k)
-    keys[k] = true
-end
-
-local function keyUp(k)
-    keys[k] = false
-end
-
-
-local function mouseClick(button, x, y)
-    if mouse.inTerm(x, y) == false then return end
-    mouse.click(button, x, y)
-end
-
-local function mouseScroll(dir, x, y) -- NOTE: This is bad, TODO remake how objects recieve input
-    if mouse.inTerm(x, y) == false then return end
-    mouse.scroll(dir, x, y)
-end
-
-local function mouseUp(button, x, y)
-    if mouse.inTerm(x, y) == false then return end
-    mouse.up(button, x, y)
-end
-
-local function mouseDrag(button, x, y)
-    if mouse.inTerm(x, y) == false then
-        if mouse.current then
-            mouse.current:up(button, x, y)
-        end
-    else
-        mouse.drag(button, x, y)
+    function input.getDownControl()
+        return toValidControl(downControl)
     end
-end
 
-local rawEventListeners = {}
-local function addRawEventListener(o)
-    table.insert(rawEventListeners, o)
-end
+    --#endregion
 
-local function removeRawEventListener(o)
-    table.remove(rawEventListeners, engine.utils.find(rawEventListeners, o))
-end
+    --#region Event Handling
 
-local function stopRawEventPropopgation()
-    propogateCancel = true
-end
+    local function eventKey(key)
+        heldKeys[key] = true
+    end
 
-local function rawEvent(data)
-    propogateCancel = false
-    for _, listener in ipairs(rawEventListeners) do
-        if propogateCancel == false and isValid(listener) then
-            if type(listener) == "table" then
-                listener:rawEvent(data)
-            elseif type(listener) == "function" then
-                listener(data)
+    local function eventKeyUp(key)
+        heldKeys[key] = nil
+    end
+
+    local function eventMouseClick(b, x, y)
+        heldMouseButtons[b] = true
+
+        mouseX, mouseY = x, y
+        local clickTime = os.clock()
+        local deltaTime = clickTime - mouseClickTime
+        mouseClickTime = clickTime
+
+        if not inTerm(x, y) then
+            return
+        end
+
+        local c = input.getControlFromPoint(x, y)
+        local o = clickControl
+        clickControl = c
+
+        input.setFocusControl(input.getFocusOwner(c))
+        input.setDownControl(c)
+        if c and isControlValid(c) then
+            c:click(b, toLocal(c, x, y))
+        end
+
+        if c and isControlValid(c) and c == o then
+            if deltaTime < 0.33 then
+                c:doubleClick(b, toLocal(c, x, y))
+                mouseClickTime = 0
             end
         end
     end
-end
 
----comment
----@return string?
-local function processInput()
-    local data = table.pack(os.pullEventRaw())
-    local event = data[1]
+    local function eventMouseUp(b, x, y)
+        heldMouseButtons[b] = nil
 
-    if isValid(mouse.current) == false then
-        mouse.current = nil
+        mouseX, mouseY = x, y
+        if not inTerm(x, y) then
+            return
+        end
+
+        if downControl and isControlValid(downControl) then
+            downControl:pressed()
+        end
+
+        input.setDownControl(nil)
     end
 
-    if isValid(mouse.cursorControl) == false then
-        mouse.cursorControl = nil
-    end
+    local function eventMouseDrag(b, x, y)
+        local dx, dy = x - mouseX, y - mouseY
+        mouseX, mouseY = x, y
+        if not inTerm(x, y) then
+            input.setDownControl(nil)
+            return
+        end
 
-    if event == 'key' then
-        key(data[2])
-    elseif event == 'key_up' then
-        keyUp(data[2])
-    elseif event == 'mouse_click' then
-        mouseClick(
-            data[2],
-            data[3],
-            data[4]
-        )
-    elseif event == 'mouse_up' then
-        mouseUp(
-            data[2],
-            data[3],
-            data[4]
-        )
-    elseif event == "mouse_drag" then
-        mouseDrag(
-            data[2],
-            data[3],
-            data[4]
-        )
-    elseif event == "mouse_scroll" then
-        mouseScroll(
-            data[2],
-            data[3],
-            data[4]
-        )
-    elseif event == "mos_window_focus" then
-        if mouse.clickControl then -- Is this used?
-            mouse.clickControl:up(0, 0, 0)
-            mouse.clickControl = nil
+        local validClickControl = toValidControl(clickControl)
+
+        if clickControl and isControlValid(clickControl) then
+            local lx, ly = toLocal(clickControl, x, y)
+            clickControl:drag(b, lx, ly, dx, dy)
+        end
+
+        local c = input.getControlFromPoint(x, y)
+        local validC = toValidControl(c)
+        if not validC then
+            input.setDownControl(nil)
+        elseif validC ~= clickControl and not validC.dragSelectable then
+            input.setDownControl(nil)
+        end
+
+        if validC and validClickControl then
+            if (validC.dragSelectable and validClickControl.dragSelectable) or validC == validClickControl then
+                input.setDownControl(c)
+                input.setFocusControl(input.getFocusOwner(c))
+            end
         end
     end
 
-    
-    rawEvent(data)
-    
-    if isValid(mouse.inputControl) then
-        mouse.inputControl:input(data) -- TODO Have a pre and post input for inputControl
+    local function eventMouseScroll(dir, x, y)
+        if not inTerm(x, y) then
+            return
+        end
+
+        local function scrollControl(c)
+            if isControlOnPoint(c, x, y) then
+                c:scroll(dir, toLocal(c, x, y))
+            end
+
+            for i = 1, #c.children do
+                scrollControl(c.children[i])
+            end
+        end
+
+        scrollControl(engine.root)
     end
 
-    return event
-end
+    local function eventAny(data)
+        for _, listener in ipairs(rawEventListeners) do
+            if propagateCancel == false then
+                if type(listener) == "table" then
+                    listener:rawEvent(data)
+                elseif type(listener) == "function" then
+                    listener(data)
+                end
+            end
+        end
+    end
 
-local function setTargetTerm(t)
-    targetTerm = t
-end
+    --#endregion
 
----@class Input
-local Input = {
-    isControlInPoint = isControlInPoint,
-    getBranchInPoint = mouse.getControlInPoint,
-    isKey = isKey,
-    processInput = processInput,
-    addRawEventListener = addRawEventListener,
-    removeRawEventListener = removeRawEventListener,
-    grabControlFocus = grabControlFocus,
-    releaseControlFocus = releaseControlFocus,
-    getFocus = getFocus,
-    getCurrentControl = getCurrentControl,
-    setCursorControl = setCursorControl,
-    getCursorControl = getCursorControl,
-    setInputControl = setInputControl,
-    getInputControl = getInputControl,
-    isInputGrabbed = isInputGrabbed,
-    setTargetTerm = setTargetTerm,
-    stopRawEventPropopgation = stopRawEventPropopgation
-}
+    ---@return table
+    function input.pullEvent()
+        propagateCancel = false
 
-return Input
+        local data = table.pack(os.pullEventRaw())
+        local event = data[1]
+
+        if event == "key" then
+            eventKey(data[2])
+        elseif event == "key_up" then
+            eventKeyUp(data[2])
+        elseif event == "mouse_click" then
+            eventMouseClick(data[2], data[3], data[4])
+        elseif event == "mouse_up" then
+            eventMouseUp(data[2], data[3], data[4])
+        elseif event == "mouse_drag" then
+            eventMouseDrag(data[2], data[3], data[4])
+        elseif event == "mouse_scroll" then
+            eventMouseScroll(data[2], data[3], data[4])
+        elseif event == "mos_window_focus" then
+            if data[2] == false then
+                input.setDownControl(nil)
+                input.setFocusControl(nil)
+            end
+        end
+
+        eventAny(data)
+
+        if inputControl and isControlValid(inputControl) then
+            inputControl:input(data)
+        end
+
+        return data
+    end
+
+    return input
 end

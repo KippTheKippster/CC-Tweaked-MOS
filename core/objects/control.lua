@@ -73,16 +73,15 @@ Control._visible = true
 Control.inheritStyle = false
 Control.centerText = false
 Control.focus = false
-Control.propogateFocusUp = false
+Control.propagateFocusUp = false
 Control.clipText = true
 Control.mouseIgnore = false
 Control.rendering = true
-Control.draggable = false
 Control.dragSelectable = false
 Control.topLevel = false
 ---@type Control[]
 Control.children = {}
----@type Control
+---@type Control?
 Control.parent = nil
 Control._marginL = 0
 ---@type number
@@ -360,13 +359,13 @@ Control:defineProperty('text', {
 })
 
 ---@param o Control
-local function propogateVisiblity(o)
+local function propagateVisiblity(o)
     for i = 1, #o.children do
         local c = o.children[i]
         if c.visible == true then
             c:visibilityChanged()
             c:emitSignal(o.visibilityChangedSignal)
-            propogateVisiblity(c)
+            propagateVisiblity(c)
         end
     end
 end
@@ -379,7 +378,7 @@ Control:defineProperty('visible', {
         if same == false then
             o:visibilityChanged()
             o:emitSignal(o.visibilityChangedSignal)
-            propogateVisiblity(o)
+            propagateVisiblity(o)
             o:queueDraw()
         end
     end
@@ -634,17 +633,6 @@ function Control:replaceChildren(children)
     self:queueDraw()
 end
 
----@param button integer
----@param rx number
----@param ry number
----@param x number
----@param y number
-function Control:drag(button, x, y, rx, ry)
-    if not self.draggable then return end
-    self.gx = self.gx + rx
-    self.gy = self.gy + ry
-end
-
 function Control:toFront()
     if self.parent.children[#self.parent.children] == self then return end
     engine.utils.pushBottom(self.parent.children, self)
@@ -689,11 +677,13 @@ function Control:isOnScreen()
 end
 
 function Control:grabFocus()
-    engine.input.grabControlFocus(self)
+    engine.input.setFocusControl(engine.input.getFocusOwner(self))
 end
 
 function Control:releaseFocus()
-    engine.input.releaseControlFocus(self)
+    if engine.input.getFocusControl() == engine.input.getFocusOwner(self) then
+        engine.input.setFocusControl(nil)
+    end
 end
 
 function Control:grabCursor()
@@ -702,7 +692,9 @@ function Control:grabCursor()
 end
 
 function Control:releaseCursor()
-    engine.input.setCursorControl(nil)
+    if engine.input.getCursorControl() == self then
+        engine.input.setCursorControl(nil)
+    end
 end
 
 function Control:grabInput()
@@ -710,17 +702,46 @@ function Control:grabInput()
 end
 
 function Control:releaseInput()
-    engine.input.setInputControl(nil)
+    if engine.input.getInputControl() == self then
+        engine.input.setInputControl(nil)
+    end
+end
+
+function Control:grabDown()
+    engine.input.setDownControl(self)
+end
+
+function Control:releaseDown()
+    if engine.input.getDownControl() == self then
+        engine.input.setDownControl(nil)
+    end
 end
 
 --Event Functions that can be overwritten
 function Control:treeEntered() end
 function Control:childrenChanged() end
-function Control:down(button, x, y) end
-function Control:up(button, x, y) end
-function Control:pressed(button, x, y) end
-function Control:doublePressed(button, x, y) end
+function Control:down() end
+function Control:up() end
+function Control:pressed() end
+---@param button integer
+---@param x number
+---@param y number
+function Control:click(button, x, y) end
+---@param button integer
+---@param x number
+---@param y number
+function Control:doubleClick(button, x, y) end
+---@param button integer
+---@param x number
+---@param y number
+---@param dx number
+---@param dy number
+function Control:drag(button, x, y, dx, dy) end
+---@param dir integer
+---@param x number
+---@param y number
 function Control:scroll(dir, x, y) end
+
 function Control:focusChanged() end
 function Control:updateCursor() end
 function Control:input(data) end
