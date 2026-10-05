@@ -487,11 +487,7 @@ function Control:drawShadow(style)
         writeShadow(self.gx + self.w + 1, self.gy + i)
     end
 
-    for i = 1 - s.shadowOffsetU, self.h do
-        writeShadow(self.gx, self.gy + i)
-    end
-
-    for i = 0, self.w + 1 do
+    for i = 2, self.w + 1 do
         writeShadow(self.gx + i, self.gy + self.h + 1)
     end
 end

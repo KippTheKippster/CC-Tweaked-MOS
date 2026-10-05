@@ -107,6 +107,7 @@ function ProgramViewport:unhandledEvent(data)
     local args = data
     if event == "mouse_click" or event == "mouse_drag" or event == "mouse_up" then
         if self.parent:inFocus() == false then return { true } end
+        if input.getClickControl() ~= self then return { true } end
         local button, x, y = data[2], data[3], data[4]
         local offsetX, offsetY = self.program.window.getPosition()
 
@@ -210,7 +211,7 @@ function ProgramViewport:unhandledEvent(data)
             term.setCursorPos(1, 1)
             term.setTextColor(colors.red)
             term.setBackgroundColor(colors.black)
-            print("Viewport Result: ", err)
+            print("Viewport Error: ", err)
             if mos then
                 mos.log("Viewport Error: ", err)
             end
@@ -219,6 +220,7 @@ function ProgramViewport:unhandledEvent(data)
         end
 
         self:queueDraw()
+        self.parent:_onViewportEvent()
 
         return result
     end
@@ -239,6 +241,11 @@ function ProgramViewport:updateWindow()
     if self.resizeQueued == true then
         resumeProcess(self, { "term_resize" })
         self.resizeQueued = false
+
+        -- Force parent to draw borders
+        term.redirect(self.parentTerm)
+        self.parent:_onViewportEvent()
+        term.redirect(self.program.window)
     end
 
     self.program.window.setVisible(true)

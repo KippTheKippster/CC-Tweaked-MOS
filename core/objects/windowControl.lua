@@ -2,6 +2,7 @@
 ---@param control Control
 ---@param button Button
 ---@param style Style
+---@param styleDown Style
 ---@return WindowControl
 return function(engine, control, button, style, styleFocus, styleDown)
 ---@class WindowControl : Control
@@ -39,14 +40,14 @@ WindowControl:defineProperty('fullscreen', {
             wi.expandH = true
             wi:toFront()
             wi:grabFocus()
-            wi:emitSignal(wi.fullscreenChangedSignal)
         else
             wi.expandW = false
             wi.expandH = false
             wi.w = wi.oldW
             wi.h = wi.oldH
-            wi:emitSignal(wi.fullscreenChangedSignal)
         end
+        wi:emitSignal(wi.fullscreenChangedSignal)
+        wi:fullscreenChanged()
     end
 })
 
@@ -168,7 +169,7 @@ function WindowControl:focusChanged()
 end
 
 function WindowControl:updateFocus()
-    if self:inFocus() then
+    if self.focus then
         self:toFront()
         self:grabCursor()
     else
@@ -177,14 +178,14 @@ function WindowControl:updateFocus()
 end
 
 function WindowControl:getStyle()
-    if self:inFocus() then
+    if self.focus then
         return self.styleFocus
     else
         return self.style
     end
 end
 
-
+function WindowControl:fullscreenChanged() end
 function WindowControl:closed() end
 
 return WindowControl

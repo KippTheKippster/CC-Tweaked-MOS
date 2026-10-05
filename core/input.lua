@@ -229,6 +229,11 @@ return function(engine, utils)
         return toValidControl(inputControl)
     end
 
+    ---@return Control|nil
+    function input.getClickControl()
+        return toValidControl(clickControl)
+    end
+
     function input.setDownControl(c)
         expectControl(1, c, true)
 

@@ -100,7 +100,7 @@ local favorites = {}
 ---@type QuickSearch
 local quickSearch = nil
 
-local windowStartX = 1
+local windowStartX = 2
 local windowStartY = 2
 
 --MOS
@@ -212,8 +212,8 @@ function mos.loadTheme(file)
 end
 
 local dropdown = engine.Dropdown
-local programViewport = require(coreDotPath .. ".multiProcess.programViewport")(engine.Control, mp, engine.input)
-local programWindow = require(coreDotPath .. ".multiProcess.programWindow")(engine.WindowControl, engine.input)
+local programViewport = loadAPI(fs.combine(corePath, "multiProcess/programViewport.lua"), {mos=mos})(engine.Control, mp, engine.input)
+local programWindow = loadAPI(fs.combine(corePath, "multiProcess/programWindow.lua"), {mos=mos})(engine.WindowControl, engine)
 
 function mos.refreshTheme()
     local palette = mos.theme.palette
@@ -352,6 +352,8 @@ do
     def("theme", "os/themes/default.thm")
     def("background_image", nil, nil, "string")
     def("background_color", nil, nil, "number")
+    def("window_borders", true)
+    def("window_shadows", true)
     def("files.show_dot", true)
     def("files.show_mos", true)
     def("files.show_rom", true)
@@ -663,7 +665,10 @@ end
 ---@param ... any
 ---@return ProgramWindow
 function mos.launchProgram(name, path, x, y, w, h, ...)
+    ---@type ProgramWindow
     local window = programWindow:new()
+    window.borders = settings.get("mos.window_borders", true)
+    window.shadow = settings.get("mos.window_shadows", true)
     windowContainer:add(window)
 
     ---@type ProgramViewport
@@ -703,7 +708,7 @@ local function nextWindowTransform()
     windowStartX = windowStartX + 1
     windowStartY = windowStartY + 1
     if x + w > screenW - 2 then
-        windowStartX = 1
+        windowStartX = 2
     end
 
     if y + h > screenH - 2 then
@@ -965,7 +970,6 @@ function mos.removeAudioCallback(callback)
     table.remove(audioCallbacks, engine.utils.find(audioCallbacks, callback))
 end
 
-
 function root:rawEvent(data)
     local event = data[1]
     if event == "timer" and data[2] == clock_timer_id then
@@ -1043,6 +1047,18 @@ function root:rawEvent(data)
                 if toolBar.children[i] and toolBar.children[i].release then
                     toolBar.children[i]:release()
                 end
+            end
+        end
+    elseif event == "setting_changed" then
+        local setting = data[2]
+        local value = data[3]
+        if setting == "mos.window_borders" then
+            for _, w in ipairs(windows) do
+                w.borders = value
+            end
+        elseif setting == "mos.window_shadows" then
+            for _, w in ipairs(windows) do
+                w.shadow = value
             end
         end
     end
