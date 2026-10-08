@@ -1,3 +1,4 @@
+---*se*---
 ---@type MOS
 if mos == nil then
     printError("Settings must be opened with MOS!")

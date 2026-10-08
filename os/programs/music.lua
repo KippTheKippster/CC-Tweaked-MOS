@@ -1,3 +1,4 @@
+---*mc*---
 ---@type MOS
 local mos = mos
 ---@type ProgramWindow

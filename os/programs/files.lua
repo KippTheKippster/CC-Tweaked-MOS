@@ -1,3 +1,4 @@
+---*fe*---
 if mos == nil then
     printError("File Explorer must be opened with MOS")
     return

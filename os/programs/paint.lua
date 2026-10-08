@@ -1,3 +1,4 @@
+---*paint,ui*---
 if mos == nil then
     printError("Paint must be opened with MOS!")
     return
