@@ -122,12 +122,17 @@ end
 
 ---@param self ProgramWindow
 local function drawBorder(self)
-    if not self.borders or self.fullscreen then
+    if not self.borders or self.fullscreen or not self:isVisible() then
         return
     end
 
     local cursorX, cursorY = term.getCursorPos()
     local cursorTc, cursorBc = term.getTextColor(), term.getBackgroundColor()
+    local cursorBlink = term.getCursorBlink()
+    term.setCursorBlink(false)
+
+    local current = term.current()
+    term.redirect(engine.screenBuffer)
 
     local bg = self:getStyle().backgroundColor
     local x, y = 0, 0
@@ -167,9 +172,11 @@ local function drawBorder(self)
     writeAt(charAt(self, string.char(129), x - 2, y - 2, true, "down_right"), x, y)
     --writeAt(charAt(self, string.char(133), x - 1, y - 2, true), x, y)
 
+    term.redirect(current)
     term.setCursorPos(cursorX, cursorY)
     term.setTextColor(cursorTc)
     term.setBackgroundColor(cursorBc)
+    term.setCursorBlink(cursorBlink)
 end
 
 function ProgramWindow:treeEntered()

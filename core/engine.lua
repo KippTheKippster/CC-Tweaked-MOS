@@ -247,7 +247,7 @@ function engine.start()
         end
 
         if ok == false then
-            error("Engine: " .. tostring(err), 0)
+            error("Engine error " .. tostring(err), 0)
             engine.stop()
             local current = term.current()
             term.redirect(engine.screenBuffer)

@@ -478,12 +478,12 @@ end
 function fe.openDir(path)
     term.setBackgroundColor(colors.black)
     if not fs.exists(path) then
-        mos.popupError("Attemting to open non existent dir '" .. path .. "'")
+        mos.popupError("Attempt to open non existent file '" .. path .. "'")
         return
     end
 
     if not fs.isDir(path) then
-        mos.popupError("Not a directory '" .. path .. "'")
+        mos.popupError("Attempt to open a non directory '" .. path .. "'")
         return
     end
 

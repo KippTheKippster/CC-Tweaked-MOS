@@ -1,3 +1,5 @@
+local expect = require"cc.expect"
+
 local function contains(t, v)
     for _, x in ipairs(t) do
         if v == x then
@@ -62,9 +64,8 @@ local function pushBottom(table, object)
 end
 
 local function saveTable(file, tbl, compact, allowRepetitions)
-    if type(file) == "table" then
-        error("WHAT",2)
-    end
+    expect(1, file, "string")
+    expect(2, tbl, "table")
     compact = compact or false
     allowRepetitions = allowRepetitions or true
     local f = fs.open(file, "w")

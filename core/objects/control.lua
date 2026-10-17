@@ -580,7 +580,7 @@ end
 ---@param o Control
 function Control:add(o)
     if o.parent then
-        error("Attempting to add a child that already has a parent! __name: " .. o.__name, 2)
+        error("Attempt to add a child that already has a parent! __name: " .. o.__name, 2)
     end
 
     table.insert(self.children, o)

@@ -687,7 +687,16 @@ function mos.launchProgram(name, path, x, y, w, h, ...)
 
     local extraEnv = {}
 
-    extraEnv.mos = mos
+    local mt = {
+        __index = mos,
+        __newindex = function ()
+            error("Attempt to assign value to mos (read-only)", 2)
+        end
+    }
+    local mosEnv = {}
+    setmetatable(mosEnv, mt)
+
+    extraEnv.mos = mosEnv
     extraEnv.mosWindow = window
 
     viewport:launchProgram(engine.screenBuffer, path, extraEnv, ...)

@@ -12,11 +12,11 @@ local function object__index(o, key)
     local property = properties[key]
     if property then
         if property.get == nil then
-            error("Attempting to read property with missing get function: " .. key .. " " .. tostring(o))
+            error("Attempt to read property with missing get function: " .. key .. " " .. tostring(o))
         end
 
         if rawget(mt, "class") == true then
-            error("Attempting to get property value of class", 2)
+            error("Attempt to get property value of class", 2)
         end
 
         return property.get(o)
@@ -45,11 +45,11 @@ local function object__newindex(o, key, value)
     if property then
         if property.set == nil then
             error(
-            "Attempting to assign read-only property: " ..
+            "Attempt to assign read-only property: " ..
             key .. " " .. tostring(o) .. " with value " .. tostring(value) .. ".", 2)
         end
         if rawget(mt, "class") == true then
-            error("Attempting to set property value of class", 2)
+            error("Attempt to set property value of class", 2)
         end
 
         property.set(o, value)
@@ -80,11 +80,11 @@ local function free__index(o, key)
         return rawget(o, "__name")
     end
 
-    error("\nAttempting to access value from the previously freed object: " .. tostring(o), 2)
+    error("\nAttempt to access value from the previously freed object: " .. tostring(o), 2)
 end
 
 local function free__newindex(o, key, value)
-    error("Attempting to assign value to the previously freed object: " .. tostring(o), 2)
+    error("Attempt to assign value to the previously freed object: " .. tostring(o), 2)
 end
 
 local function new(base)
@@ -104,7 +104,7 @@ end
 function Object:new(...)
     local sMt = getmetatable(self)
     if not sMt.class then
-        error("Attempting to instance a non class object!", 2)
+        error("Attempt to instance a non class object", 2)
     end
 
     local o, mt = new(self)
@@ -126,7 +126,7 @@ end
 function Object:newClass()
     local sMt = getmetatable(self) 
     if not sMt.class then
-        error("Attempting to create class from instance!", 1)
+        error("Attempt to create class from instance", 1)
     end
 
     local o, mt = new(self)
@@ -174,14 +174,14 @@ end
 ---@param redefine boolean?
 function Object:defineProperty(key, methods, redefine)
     if key == nil then
-        error("Attemting to define property with key nil " .. tostring(self), 2)
+        error("Attempt to define property with key nil " .. tostring(self), 2)
     end
 
     local mt = getmetatable(self)
     local properties = rawget(mt, "properties")
     if properties[key] and redefine ~= true then
         error(
-        "Attempting to define an already defined property: " ..
+        "Attempt to define an already defined property: " ..
         key .. " " .. tostring(self) .. " . " .. tostring(redefine), 2)
     end
 
