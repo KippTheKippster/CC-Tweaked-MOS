@@ -84,6 +84,16 @@ local function loadTable(file)
     return textutils.unserialize(data)
 end
 
+local fromBlit = colors.fromBlit or function (hex)
+    expect(1, hex, "string")
+
+    if #hex ~= 1 then return nil end
+    local value = tonumber(hex, 16)
+    if not value then return nil end
+
+    return 2 ^ value
+end
+
 ---comment
 ---@param w table
 ---@return table?
@@ -99,9 +109,9 @@ local function getWindowChar(w, x, y)
         local textColorChar = textColor:sub(x,x)
         local backgroundColorChar = backgroundColor:sub(x,x)
 
-        local char = { text = textChar, textColor = colors.black, backgroundColor = colors.fromBlit(backgroundColorChar) }
+        local char = { text = textChar, textColor = colors.black, backgroundColor = fromBlit(backgroundColorChar) }
         if textChar ~= " " then
-            char.textColor = colors.fromBlit(textColorChar)
+            char.textColor = fromBlit(textColorChar)
         end
 
         return char

@@ -8,7 +8,6 @@ local fnComplete = nil
 local fileInfo = shell.getCompletionInfo()[file]
 if fileInfo then
     fnComplete = fileInfo.fnComplete
-    --error(fnComplete({"d", nil}))
 end
 
 local function tokenise(...)

@@ -772,7 +772,8 @@ function Control:addButton(text)
 end
 
 ---@param text string?
----@return Button
+---@param checked boolean?
+---@return Checkbox
 function Control:addCheckbox(text, checked)
     return addControl(self, engine.Checkbox, text, checked)
 end

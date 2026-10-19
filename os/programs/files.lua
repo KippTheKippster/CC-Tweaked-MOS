@@ -336,7 +336,10 @@ end
 ---@param b FileButton
 function fe.removeFromSelection(b)
     b.selected = false
-    table.remove(fe.selection, engine.utils.find(fe.selection, b))
+    local i = engine.utils.find(fe.selection, b)
+    if i then -- HACK
+        table.remove(fe.selection, engine.utils.find(fe.selection, b))
+    end
 end
 
 function fe.clearSelection()

@@ -27,10 +27,18 @@ function mos.log(...)
     logFile.flush()
 end
 
+function mos.logf(s, ...)
+    mos.log(string.format(s, ...))
+end
+
 mos.latestMosOption = ""
 
 --local runningProgram = shell.getRunningProgram()
-local mosPath = "/" .. fs.getDir(fs.getDir(debug.getinfo(1, "S").source:sub(2)))
+local src = debug.getinfo(1, "S").source:sub(2)
+if not src:find("/") then
+    src = "mos"
+end
+local mosPath = "/" .. src
 local mosDotPath = mosPath:gsub("/", ".")
 local corePath = mosPath .. "/core"
 local coreDotPath = mosDotPath .. ".core"
@@ -75,7 +83,7 @@ local function loadAPI(path, extraEnv)
     setmetatable(env, { __index = _G })
     local fn, err = loadfile(path, nil, env)
     if not fn then
-        error(err)
+        error(("%s '%s'"):format(err, path), 2)
     end
 
     return fn()

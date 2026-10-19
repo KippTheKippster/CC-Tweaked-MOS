@@ -1,5 +1,7 @@
-local src = debug.getinfo(1, "S").source:sub(2)
-local corePath = fs.getDir(src)
+local src = fs.getDir(debug.getinfo(1, "S").source:sub(2))
+if not src:find("/") then if mos then src = mos.toCorePath("") else src = "mos/core" end end
+
+local corePath = src
 local coreDotPath = "." .. corePath:gsub("/", ".")
 
 ---@class Engine
