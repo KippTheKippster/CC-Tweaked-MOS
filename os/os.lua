@@ -14,7 +14,10 @@ if fs.exists(dest) then
     end
 end
 
-local logFile = fs.open(fs.combine(dest, tostring(os.epoch("utc")) .. ".log"), "w")
+local logFile, err = fs.open(fs.combine(dest, tostring(os.epoch("utc")) .. ".log"), "w")
+if err then
+    error(("Failed to open log file '%s'"):format(err))
+end
 function mos.log(...)
     local line = ""
     local data = table.pack(...)
@@ -33,8 +36,7 @@ end
 
 mos.latestMosOption = ""
 
---local runningProgram = shell.getRunningProgram()
-local src = debug.getinfo(1, "S").source:sub(2)
+local src = fs.getDir(fs.getDir(debug.getinfo(1, "S").source:sub(2)))
 if not src:find("/") then
     src = "mos"
 end
