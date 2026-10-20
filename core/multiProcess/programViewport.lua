@@ -77,20 +77,12 @@ function ProgramViewport:queueEvent(data)
     end
 end
 
-local function drawChildren(viewport)
-    for i = 1, #viewport.children do
-        viewport.children[i]:draw()
-    end
-end
-
 local function resumeProcess(viewport, data)
     local status = coroutine.status(viewport.program.co)
     if status == "dead" then
         return { true }
     end
-    local result = mp.resumeProcess(viewport.program, data)
-    --drawChildren(viewport)
-    return result
+    return mp.resumeProcess(viewport.program, data)
 end
 
 ---comment
@@ -235,6 +227,7 @@ function ProgramViewport:updateWindow()
         return
     end
 
+    local current = term.current()
     term.redirect(self.program.window)
 
     self.program.window.reposition(self.gx + 1, self.gy + 1, self.w, self.h) --, self.program.window)
@@ -249,13 +242,11 @@ function ProgramViewport:updateWindow()
     end
 
     self.program.window.setVisible(true)
-    --drawChildren(self)
-
     if self.parent:inFocus() == false then -- This makes it so that only the focused viewport is constantly drawn (unfocused windows have to wait for next redraw)
         self.program.window.setVisible(false)
     end
 
-    term.redirect(self.parentTerm)
+    term.redirect(current)
 end
 
 return ProgramViewport

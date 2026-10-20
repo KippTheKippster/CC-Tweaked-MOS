@@ -10,6 +10,8 @@ ProgramWindow._borderDrag = ""
 ---@type ProgramViewport
 ProgramWindow.programViewport = nil
 
+ProgramWindow._pauseBorders = true
+
 ---@param self ProgramWindow
 local function reposition(self) error"what" end
 
@@ -122,17 +124,17 @@ end
 
 ---@param self ProgramWindow
 local function drawBorder(self)
-    if not self.borders or self.fullscreen or not self:isVisible() then
+    if not self.borders or self.fullscreen or not self:isVisible() or self._pauseBorders then
         return
     end
 
     local cursorX, cursorY = term.getCursorPos()
     local cursorTc, cursorBc = term.getTextColor(), term.getBackgroundColor()
     local cursorBlink = term.getCursorBlink()
-    term.setCursorBlink(false)
 
     local current = term.current()
     term.redirect(engine.screenBuffer)
+    term.setCursorBlink(false)
 
     local bg = self:getStyle().backgroundColor
     local x, y = 0, 0
@@ -311,6 +313,7 @@ function ProgramWindow:render()
     --TEXT
     self:write(self.text, style)
 
+    self._pauseBorders = false
     drawBorder(self)
 end
 
@@ -336,8 +339,17 @@ function ProgramWindow:sizeChanged()
     reposition(self)
 end
 
+function ProgramWindow:transformChanged()
+    self._pauseBorders = true
+end
+
 function ProgramWindow:fullscreenChanged()
     reposition(self)
+end
+
+function ProgramWindow:focusChanged()
+    windowControl.focusChanged(self)
+    self._pauseBorders = true
 end
 
 function ProgramWindow:updateCursor()
