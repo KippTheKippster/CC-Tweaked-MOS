@@ -1,3 +1,5 @@
+---@type MOS
+local mos = mos
 if mos == nil then
     printError("File Explorer must be opened with MOS")
     return
@@ -34,7 +36,6 @@ if type(options.callback) == "function" then
     fe.openFileCallback = options.callback
 end
 
-
 if mos then
     mos.applyTheme(engine)
 end
@@ -51,12 +52,13 @@ local dirCutStyle = engine.styleDisabled:inherit()
 engine.background = false
 
 local main = engine.root:addVContainer()
-main.expandW = true
-main.expandH = true
+main.__name = "mos_files_main"
+main.fillW = true
+main.fillH = true
 main.rendering = true
 
 local top = main:addHContainer()
-top.expandW = true
+top.fillW = true
 top.h = 1
 top.topLevel = true
 top.style = engine.styleEditFocus:inherit()
@@ -72,14 +74,14 @@ topSpacer.text = ""
 topSpacer.inheritStyle = true
 
 local pathContainer = top:addHContainer()
-pathContainer.expandW = true
+pathContainer.fillW = true
 pathContainer.h = 1
 pathContainer.rendering = true
 pathContainer.inheritStyle = true
 
 local searchbar = main:addLineEdit()
 searchbar.topLevel = true
-searchbar.expandW = true
+searchbar.fillW = true
 searchbar.visible = false
 
 searchbar.textChanged = function(self)
@@ -95,16 +97,18 @@ searchbar.textChanged = function(self)
 end
 
 local scrollContainer = main:addScrollContainer()
-scrollContainer.expandW = true
-scrollContainer.expandH = true
+scrollContainer.fillW = true
+scrollContainer.fillH = true
 
 local fileContainer = scrollContainer:addVContainer()
-fileContainer.expandW = true
-fileContainer.fitToChildrenH = true
+fileContainer.__name = "mos_files_file_container"
+fileContainer.fillW = true
 
----@class SaveContainer : HContainer
-local SaveContainer = engine.HContainer:newClass()
-SaveContainer._expandW = true
+
+---@class SaveContainer : ArrayContainer
+local SaveContainer = engine.ArrayContainer:newClass()
+SaveContainer.alignmentMode = "horizontal"
+SaveContainer._fillW = true
 ---@type LineEdit
 SaveContainer.saveEdit = nil
 ---@type Button
@@ -115,10 +119,10 @@ local saveContainer = nil
 
 if options.mode == "save" then
     saveContainer = SaveContainer:new()
-    saveContainer.expandW = true
+    saveContainer.fillW = true
 
     saveContainer.saveEdit = saveContainer:addLineEdit()
-    saveContainer.saveEdit.expandW = true
+    saveContainer.saveEdit.fillW = true
     --saveContainer.saveEdit.text = args[3]
     saveContainer.saveEdit:grabFocus()
 
@@ -177,18 +181,18 @@ FileButton.selected = false
 FileButton.styleSelect = fileSelectStyle
 FileButton.styleCut = fileCutStyle
 FileButton.path = ""
-FileButton._marginL = 1
-FileButton._marginR = 1
+FileButton._paddingL = 1
+FileButton._fitToText = false
 
 function FileButton:render()
     --PANEL
     local st = self:getStyle()
     if st ~= self.style then -- Skip drawing background when it is the same as the program background
-        self:drawPanel(self:getBorders())
+        self:drawPanel()
     end
 
     --INFO TEXT
-    local selfText = self.text
+    local selfText = self:getText()
     local text = ""
 
     if fs.isDir(self.path) then              -- This can all be moved to init
@@ -197,12 +201,8 @@ function FileButton:render()
         selfText = ">" .. selfText
         text = tostring(#fs.list(self.path)) -- This could be slow
     else
-        local size = fs.getSize(self.path)
-        if size < 100 then
-            text = math.ceil(fs.getSize(self.path)) .. "  B"
-        else
-            text = math.ceil(fs.getSize(self.path) / 100) / 10 .. " kB"
-        end
+        local size, prefix = engine.utils.sizeToKibi(fs.getSize(self.path))
+        text = size .. " " .. prefix .. "B"
     end
 
     if mos.isFileFavorite(self.path) then
@@ -213,16 +213,17 @@ function FileButton:render()
         end
     end
 
-    if #text < self.w - #selfText - 2 then
+    if #text < self:getPaddedW() - #selfText - 2 then
         term.setBackgroundColor(st.backgroundColor)
         term.setTextColor(st.textColor)
-        local x = self.w - #text
+        local x = self:getPaddedW() - #text
         term.setCursorPos(self.gx + x, self.gy + 1)
         term.write(text)
     end
 
     --TEXT
-    self:write(selfText)
+    local t, x, y = self:formatText(selfText)
+    engine.drawText(t, x, y, st)
 end
 
 function FileButton:down()
@@ -342,7 +343,7 @@ function fe.newFileButton(name)
         end
     end
     fileButton.h = 1
-    fileButton.expandW = true
+    fileButton.fillW = true
     fileButton.dragSelectable = true
     fileButton.text = name
     fileButton.path = path
@@ -365,7 +366,7 @@ end
 function fe.newFileEdit(text, callback)
     local edit = engine.LineEdit:new()
     edit.text = text
-    edit.expandW = true
+    edit.fillW = true
     edit:grabFocus()
     edit.textSubmitted = function()
         callback(edit)
@@ -379,8 +380,12 @@ end
 function fe.addFileEdit(callback)
     local edit = fe.newFileEdit("", callback)
     fileContainer:add(edit)
+    fileContainer.h = fileContainer.h + 1
+    fileContainer.minH = fileContainer.minH + 1
     fe.clearSelection()
-    scrollContainer:scrollToView(fileContainer.gy + fileContainer.h + 1)
+    engine.callDeferred(function ()
+        scrollContainer:scrollToView(fileContainer.gy + fileContainer.h + 1)
+    end)
     mosWindow:grabFocus()
     return edit
 end
@@ -443,12 +448,16 @@ function fe.openDir(path)
         error("Not a directory '" .. path .. "'", 0)
     end
 
+    if #path > 0 and path:sub(1, 1) ~= '/' then
+        path = '/' .. path
+    end
+
     fe.currentPath = path
     fe.clearSelection()
 
     fileContainer:freeChildren()
     pathContainer:freeChildren()
-    scrollContainer:setScroll(0)
+    scrollContainer.scrollValue = 0
 
     searchbar.text = ""
 
@@ -512,13 +521,14 @@ end
 ---comment
 ---@param filter string
 function fe.filter(filter)
+    filter = filter:lower()
     if filter == "" then
         for _, v in ipairs(fileContainer.children) do
             v.visible = true
         end
     else
         for _, v in ipairs(fileContainer.children) do
-            if filter == "" or v.path:find(filter, 1, true) ~= nil then
+            if filter == "" or v.path:lower():find(filter, 1, true) ~= nil then
                 v.visible = true
             else
                 v.visible = false
@@ -755,7 +765,6 @@ function fe.newDriveDropdown(path)
     local title = disk.getMountPath(path)
     dropdown.text = title
     dropdown.text = "[" .. dropdown.text .. "]"
-    dropdown.w = #dropdown.text
     dropdown:addToList("Install Folder")
     dropdown:addToList("Install Here")
     dropdown:addToList("--------------", false)
@@ -937,6 +946,7 @@ function fileDropdown:optionPressed(i)
     end
 end
 
+---@type Dropdown
 local editDropdown = mos.engine.Dropdown:new()
 editDropdown.text = "Edit"
 editDropdown:addToList("Cut")

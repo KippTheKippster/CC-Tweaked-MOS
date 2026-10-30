@@ -1,8 +1,8 @@
 -- Extends windowControl, attaches a programViewport to a window.
 ---@return ProgramWindow
 ---@param windowControl WindowControl
----@param input Input
-return function(windowControl, input)
+---@param engine Engine
+return function(windowControl, engine)
 ---@class ProgramWindow : WindowControl
 local ProgramWindow = windowControl:newClass()
 ProgramWindow.__type = "ProgramWindow"
@@ -11,17 +11,16 @@ ProgramWindow.__type = "ProgramWindow"
 ProgramWindow.programViewport = nil
 
 function ProgramWindow:render()
-    local style = self:getStyle()
     --SHADOW
-    self:drawShadow(style)
+    self:drawShadow()
     --PANEL
     local l = self._gx + 1
     local u = self._gy + 1
     local r = self._gx + self._w
     local d = self._gy + 1 --draw only the top of the window, the rest is hidden by the program viewport
-    self:drawPanel(l, u, r, d, style)
+    engine.drawPanel(l, u, r, d, self:getStyle())
     --TEXT
-    self:write(self.text, style)
+    self:drawText()
 end
 
 function ProgramWindow:addViewport(pv)
@@ -33,10 +32,10 @@ function ProgramWindow:addViewport(pv)
 end
 
 function ProgramWindow:close()
+    windowControl.close(self)
     if not self.programViewport.program.dead then
         self.programViewport:endProcess()
     end
-    windowControl.close(self)
 end
 
 function ProgramWindow:down()

@@ -37,7 +37,7 @@ end
 ---@return boolean
 local function isControlInPoint(c, x, y)
     return collision.inArea(
-        x, y, math.floor(c.gx) + 1, math.floor(c.gy) + 1, math.floor(c.w) - 1, math.floor(c.h) - 1
+        x, y, math.floor(c.gx) + 1, math.floor(c.gy) + 1, math.floor(c:getPaddedW()) - 1, math.floor(c:getPaddedH()) - 1
     )
 end
 

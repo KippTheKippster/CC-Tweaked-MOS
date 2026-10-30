@@ -1,6 +1,6 @@
 ---@return FlowContainer
 return function(container)
----@class FlowContainer : Container 
+---@class FlowContainer : Container
 local FlowContainer = container:newClass()
 FlowContainer.__type = "FlowContainer"
 

@@ -1,8 +1,8 @@
 ---@param control Control
----@param input Input
+---@param engine Engine
 ---@param style Style
 ---@return ColorPicker
-return function(control, input, style)
+return function(control, engine, style)
 ---@class ColorPicker : Control
 local ColorPicker = control:newClass()
 ColorPicker.__type = "ColorPicker"
@@ -19,16 +19,16 @@ ColorPicker.style = style:unique()
 ColorPicker._color = 1
 ---@type integer
 ColorPicker.color = nil
-ColorPicker:defineProperty('color', {
-    get = function (o)
+ColorPicker:defineProperty('color',
+    function (o)
         return o._color
     end,
-    set = function (o, value)
+    function (o, value)
         o._color = value
         o.style.backgroundColor = value
         o:queueDraw()
     end
-})
+)
 
 ---@param p ColorPicker
 ---@param color integer
@@ -62,7 +62,7 @@ function ColorPicker:init(text, color)
     ---@type FlowContainer
     self.list = self:addFlowContainer()
     self.list.topLevel = true
-    self.list.expandW = true
+    self.list.fillW = true
     self.list.h = 1
     self.list.visible = false
     self.list.rendering = false
@@ -74,13 +74,11 @@ function ColorPicker:init(text, color)
         addColor(self, 2 ^ i)
     end
 
-    input.addRawEventListener(self)
-    self:expandChildren()
-    self.list:expandChildren()
+    engine.input.addRawEventListener(self)
 end
 
 function ColorPicker:queueFree()
-    input.removeRawEventListener(self)
+    engine.input.removeRawEventListener(self)
     control.queueFree(self)
 end
 

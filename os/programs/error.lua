@@ -12,8 +12,6 @@ mos.log("MOS Error Popup: ", textutils.serialize(args))
 ---@type Engine
 mos.applyTheme(engine)
 local main = engine.root:addVContainer()
-main.fitToChildrenW = true
-main.fitToChildrenH = true
 
 for _, err in ipairs(args) do
     local c = main:addControl()
@@ -22,8 +20,6 @@ for _, err in ipairs(args) do
     c.marginR = 1
 end
 
-main:resize()
-main:expandChildren()
 
 mosWindow.minW = main.w
 mosWindow.minH = main.h + 1
@@ -31,5 +27,7 @@ mosWindow.w = mosWindow.minW
 mosWindow.h = mosWindow.minH
 mosWindow.oldW = mosWindow.w
 mosWindow.oldH = mosWindow.h
+
+mosWindow:resize()
 
 engine.start()

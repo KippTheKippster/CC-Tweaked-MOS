@@ -29,14 +29,12 @@ end
 
 mos.latestMosOption = ""
 
---local runningProgram = shell.getRunningProgram()
 local mosPath = "/" .. fs.getDir(fs.getDir(debug.getinfo(1, "S").source:sub(2)))
 local mosDotPath = mosPath:gsub("/", ".")
 local corePath = mosPath .. "/core"
 local coreDotPath = mosDotPath .. ".core"
 local osPath = mosPath .. "/os"
 local osDotPath = mosDotPath .. ".os"
-
 mos.mosPath = mosPath
 mos.mosDotPath = mosPath
 
@@ -75,7 +73,7 @@ local function loadAPI(path, extraEnv)
     setmetatable(env, { __index = _G })
     local fn, err = loadfile(path, nil, env)
     if not fn then
-        error(err)
+        error(err, 2)
     end
 
     return fn()
@@ -83,16 +81,14 @@ end
 
 ---@type MultiProgram
 
-local mp = loadAPI(fs.combine(corePath, "multiProcess/multiProgram.lua"), {mos = mos})
---local mp = require(coreDotPath .. ".multiProcess.multiProgram")
+local mp = loadAPI(fs.combine(corePath, "multiProcess/multiProgram.lua"), { mos = mos })
 
 ---@type Engine
-local engine = loadAPI(fs.combine(corePath, "engine.lua"), {mos = mos})--require(coreDotPath .. ".engine") --mp.loadProgram(engineEnv, toCorePath("/engine.lua"))()--
+local engine = loadAPI(fs.combine(corePath, "engine.lua"), { mos = mos })
 local windows = {}
 local customTools = {}
 local currentWindow = nil
 
--- Private Mos vars
 local favorites = {}
 ---@type QuickSearch
 local quickSearch = nil
@@ -150,7 +146,7 @@ end
 
 local function validateTable(tbl, default)
     if default == nil then
-        error("Got nil default", 2)
+        error("nil default", 2)
     end
 
     for k, v in pairs(default) do
@@ -161,7 +157,7 @@ local function validateTable(tbl, default)
 end
 
 function mos.saveSettings()
-    settings.save("/.mosdata/users/" .. mos.user .. "/.settings")
+    settings.save(("/.mosdata/users/%s/.settings"):format(mos.user))
 end
 
 ---comment
@@ -179,7 +175,7 @@ function mos.addFileFavorite(file, settings)
     settings = settings or { name = fs.getName(file) }
     favorites[file] = settings
     os.queueEvent("mos_favorite", file)
-    engine.utils.saveTable(".mosdata/users/" .. mos.user .. "/.favorites" , favorites)
+    engine.utils.saveTable(".mosdata/users/" .. mos.user .. "/.favorites", favorites)
 end
 
 ---comment
@@ -189,7 +185,7 @@ function mos.removeFileFavorite(file)
     favorites[file] = nil
     if fav then
         os.queueEvent("mos_favorite_remove", file)
-        engine.utils.saveTable(".mosdata/users/" .. mos.user .. "/.favorites" , favorites)
+        engine.utils.saveTable(".mosdata/users/" .. mos.user .. "/.favorites", favorites)
     end
 end
 
@@ -209,8 +205,8 @@ function mos.loadTheme(file)
 end
 
 local dropdown = engine.Dropdown
-local programViewport = require(coreDotPath .. ".multiProcess.programViewport")(engine.Control, mp, engine.input)
-local programWindow = require(coreDotPath .. ".multiProcess.programWindow")(engine.WindowControl, engine.input)
+local programViewport = loadAPI(corePath .. "/multiProcess/programViewport.lua", {mos=mos})(engine.Control, mp, engine)
+local programWindow = loadAPI(corePath .. "/multiProcess/programWindow.lua", {mos=mos})(engine.WindowControl, engine)
 
 function mos.refreshTheme()
     local palette = mos.theme.palette
@@ -233,7 +229,7 @@ function mos.refreshTheme()
 
     mos.style = mos.applyTheme(engine)
     engine.backgroundColor = settings.get("mos.background_color") or mos.theme.backgroundColor
-    engine.root:queueDraw()
+    engine.queueDraw()
     os.queueEvent("mos_refresh_theme")
 end
 
@@ -259,7 +255,7 @@ function mos.applyTheme(targetEngine, theme)
 
     local styleWindow = e.style:inherit()
     local styleWindowFocus = styleWindow:inherit()
-    local styleWindowDown = styleWindow:inherit()--WindowControl.styleDown
+    local styleWindowDown = styleWindow:inherit() --WindowControl.styleDown
 
     local styleToolbar = style:inherit()
     local styleToolbarDown = styleDown:inherit()
@@ -341,9 +337,10 @@ end
 
 mos.theme = defaultTheme
 
+-- Settings
 do
-    local function def (name, default, description, _type)
-        settings.define("mos." .. name, {description = description, default = default, type = _type or type(default) })
+    local function def(name, default, description, _type)
+        settings.define("mos." .. name, { description = description, default = default, type = _type or type(default) })
     end
 
     def("theme", "os/themes/default.thm")
@@ -356,7 +353,8 @@ do
     def("files.left_heart", true)
 
     local fa = {}
-    appendToMap(fa, { ".txt", ".md", ".log", ".usr", ".json", ".settings", ".favorites", ".cfg" }, { program="/rom/programs/edit.lua" })
+    appendToMap(fa, { ".txt", ".md", ".log", ".usr", ".json", ".settings", ".favorites", ".cfg" },
+        { program = "/rom/programs/edit.lua" })
     fa[".nfp"] = { program = "os/programs/paint.lua" }
     def("file_association", fa)
 end
@@ -386,13 +384,12 @@ do
 end
 
 
-mos.loadTheme(settings.get"mos.theme")
+mos.loadTheme(settings.get "mos.theme")
 engine.utils.saveTable(toOsPath("/themes/default.thm"), defaultTheme)
 
 --Objects
 --Background
 local backgroundIcon = engine.root:addIcon()
-backgroundIcon.text = ""
 do
     local path = settings.get("mos.background_image")
     if path and path ~= "" and fs.exists(path) then
@@ -408,41 +405,43 @@ function mos.setBackground(image)
     backgroundIcon.texture = image
 end
 
-
 local focusContainer = engine.root:addControl()
 focusContainer.mouseIgnore = true
 focusContainer.rendering = false
-focusContainer.expandW = true
-focusContainer.expandH = true
+focusContainer.fillW = true
+focusContainer.fillH = true
 
 local windowContainer = focusContainer:addControl()
 windowContainer.mouseIgnore = true
 windowContainer.rendering = false
-windowContainer.expandW = true
-windowContainer.expandH = true
+windowContainer.fillW = true
+windowContainer.fillH = true
 
 --Top Bar
-local topBar = focusContainer:addControl("")
+local topBar = focusContainer:addHContainer()
+topBar.__name = "mos_top_bar"
 topBar.rendering = true
 topBar.mouseIgnore = true
-topBar.expandW = true
---[[
-function topBar:getStyle()
-    if mos.fullscreenWindow then
-       return mos.style.toolbarFullscreen
-    else
-       return mos.style.toolbar
-    end
-end
-]]--
+topBar.fillW = true
+
+
+local topScroll = topBar:addScrollContainer("horizontal")
+topScroll.fillW = true
+topScroll.alignmentMode = "horizontal"
+topScroll.__name = "mos_top_scroll"
+topScroll.rendering = false
+topScroll.mouseIgnore = true
 
 --Tool Bar
-local toolBar = topBar:addHContainer()
-toolBar.expandW = true
+
+
+local toolBar = topScroll:addHContainer()
+toolBar.__name = "mos_tool_bar"
 toolBar.h = 1
 toolBar.separation = 1
 toolBar.mouseIgnore = true
 toolBar.inheritStyle = true
+toolBar.rendering = false
 
 local function toolbarChildFocusChanged(c)
     if c.focus == true then
@@ -471,6 +470,7 @@ windowDropdown.text = "="
 
 ---@type Dropdown
 local mosDropdown = dropdown:new()
+mosDropdown.__name = "mos_dropdown"
 mos.addToToolbar(mosDropdown)
 mosDropdown.text = "MOS"
 
@@ -494,9 +494,9 @@ function mos.refreshMosDropdown()
             local x = option:addButton()
             x.text = string.char(3)
             x.inheritStyle = true
-            x.w = #x.text
             x.h = 1
             x.anchorW = "right"
+            x.x = 1
             x.dragSelectable = true
             x.propogateFocusUp = true
             x.pressed = function()
@@ -515,8 +515,9 @@ mos.refreshMosDropdown()
 
 local clock = topBar:addControl()
 clock.h = 1
-clock.anchorW = "right"
+clock.paddingL = 1
 clock.inheritStyle = true
+clock.__name = "mos_clock"
 
 local function isFullscreen()
     return mos.fullscreenWindow ~= nil
@@ -530,7 +531,6 @@ local function setFullscreenMode(fullscreen)
         windowContainer:toFront()
     end
 end
-
 
 ---comment
 ---@param w ProgramWindow
@@ -547,9 +547,10 @@ local function windowFullscreenChanged(w)
 end
 
 ---comment
----@param w WindowControl
+---@param w ProgramWindow
 ---@param b Button
 local function windowClosed(w, b)
+    w.programViewport:queueEvent({ "mos_window_close" })
     w.fullscreen = false
     windowFullscreenChanged(w) -- This is a bit of a hack, but it doesn't seem like the fullscreen signal is called right after?
     if isFullscreen() == false then
@@ -622,8 +623,8 @@ local function addWindow(w)
     local x = b:addButton()
     x.text = "x"
     x.inheritStyle = true
-    x.w = #x.text
     x.h = 1
+    x.marginL = 1
     x.anchorW = "right"
     x.dragSelectable = true
     x.propogateFocusUp = true
@@ -654,6 +655,7 @@ end
 ---@param ... any
 ---@return ProgramWindow
 function mos.launchProgram(name, path, x, y, w, h, ...)
+    ---@type ProgramWindow
     local window = programWindow:new()
     windowContainer:add(window)
 
@@ -716,7 +718,6 @@ function mos.getInputFileOpenModifier()
     end
 end
 
-
 ---comment
 ---@param path string
 ---@param modifier string
@@ -754,12 +755,12 @@ function mos.openFile(path, ...)
                     program = toMosPath(v.program)
                 end
             end
-    
+
             if v.fullscreen then
                 x, y = 0, 0
                 w, h = engine.root.w, engine.root.h
             end
-    
+
             local wi = mos.launchProgram(file, program, x, y, w, h, path, ...)
             wi.fullscreen = v.fullscreen
             return wi
@@ -781,7 +782,8 @@ end
 ---@param workingFile string?
 ---@return ProgramWindow
 function mos.openArgs(callback, startText, workingFile)
-    return mos.launchProgram("Args", toOsPath("programs/writeArgs.lua"), 3, 3, 24, 2, callback, startText or "", workingFile or "")
+    return mos.launchProgram("Args", toOsPath("programs/writeArgs.lua"), 3, 3, 24, 2, callback, startText or "",
+        workingFile or "")
 end
 
 ---comment
@@ -789,8 +791,8 @@ end
 ---@param startText string?
 ---@return ProgramWindow
 function mos.openFileWithArgs(path, startText)
-    local args =  mos.openArgs(
-        function(data)
+    local args = mos.openArgs(
+        function(_, data)
             mos.openFile(path, table.unpack(data))
         end, startText, path)
     args.text = "Args '" .. fs.getName(path) .. "'"
@@ -800,7 +802,7 @@ end
 ---@param path string
 ---@return ProgramWindow
 function mos.openDir(path)
-    local w = mos.openFile(toOsPath("/programs/files.lua"), {start = path, closeOnOpen = false})
+    local w = mos.openFile(toOsPath("/programs/files.lua"), { start = path, closeOnOpen = false })
     w.text = "File Explorer"
     return w
 end
@@ -861,27 +863,28 @@ function mos.bindTool(window, callbackFunction)
     customTools[window] = callbackFunction
 end
 
+
+
 local clock_timer_id
-local root = engine.root
 
-engine.input.addRawEventListener(root)
-
-function clock:update()
-    self.text = textutils.formatTime(os.time('local'), true)
+local function updateTime()
+    clock.text = textutils.formatTime(os.time('local'), true)
     clock_timer_id = mp.startTimer(engine.p, 1.0)
 end
 
-function root:rawEvent(data)
+updateTime()
+
+local function rawEvent(data)
     local event = data[1]
     if event == "timer" and data[2] == clock_timer_id then
-        clock:update()
+        updateTime()
     end
 
     if event == "key" then
         if data[2] == keys.t then
             if engine.input.isKey(keys.leftCtrl) then
                 ---@type ProgramWindow
-                local focus =  engine.input.getFocus()
+                local focus = engine.input.getFocus()
                 if engine.utils.contains(windows, focus) then
                     focus:close()
                 end
@@ -925,7 +928,7 @@ function root:rawEvent(data)
     end
 end
 
-clock:update()
+engine.input.addRawEventListener(rawEvent)
 
 mos.engine = engine
 ---@type ProgramWindow?

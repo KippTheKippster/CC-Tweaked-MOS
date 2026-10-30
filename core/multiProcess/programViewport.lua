@@ -1,9 +1,9 @@
 -- Extends control, draws the inbuilt cc-tweaked window object on to a control object.
 ---@param control Control
 ---@param mp MultiProgram
----@param input Input
+---@param engine Engine
 ---@return ProgramViewport
-return function(control, mp, input)
+return function(control, mp, engine)
 ---@class ProgramViewport : Control
 local ProgramViewport = control:newClass()
 ProgramViewport.__type = "ProgramViewport"
@@ -78,12 +78,6 @@ function ProgramViewport:queueEvent(data)
     end
 end
 
-local function drawChildren(viewport)
-    for i = 1, #viewport.children do
-        viewport.children[i]:draw()
-    end
-end
-
 local function resumeProcess(viewport, data)
     local status = coroutine.status(viewport.program.co)
     if status == "dead" then
@@ -108,7 +102,7 @@ function ProgramViewport:unhandledEvent(data)
     local args = data
     if event == "mouse_click" or event == "mouse_drag" or event == "mouse_up" then
         if self.parent:inFocus() == false then return { true } end
-        if input.getCurrentControl() ~= self then return { true } end
+        if engine.input.getCurrentControl() ~= self then return { true } end
         local button, x, y = data[2], data[3], data[4]
         local offsetX, offsetY = self.program.window.getPosition()
 
@@ -177,7 +171,7 @@ function ProgramViewport:unhandledEvent(data)
     if self.terminated == true then
         if self.parent:inFocus() then
             if event == "char" then
-                input.stopRawEventPropopgation() -- Prevent the char event to be sent to the next auto focus window 
+                engine.input.stopRawEventPropopgation() -- Prevent the char event to be sent to the next auto focus window
                 self.parent:close()
             elseif event == "key" then
                 local k = data[2]
@@ -244,7 +238,6 @@ function ProgramViewport:updateWindow()
     end
 
     self.program.window.setVisible(true)
-    --drawChildren(self)
 
     if self.parent:inFocus() == false then -- This makes it so that only the focused viewport is constantly drawn (unfocused windows have to wait for next redraw)
         self.program.window.setVisible(false)

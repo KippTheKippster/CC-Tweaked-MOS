@@ -412,8 +412,8 @@ ui.saveAs = function()
 end
 
 background = engine.root:addControl()
-background.expandW = true
-background.expandH = true
+background.fillW = true
+background.fillH = true
 background.rendering = false
 
 sprite = background:addControl()
@@ -502,7 +502,9 @@ function sprite:rawEvent(data)
 end
 
 function sprite:transformChanged()
-    coords.text = sprite.x .. " " .. sprite.y
+    if coords then
+        coords.text = sprite.x .. " " .. sprite.y
+    end
 end
 
 local function fillArea(char, x, y, w, h)
@@ -626,7 +628,7 @@ function sprite:up()
             if selectionBox.h < 1 then
                 local y = selectionBox.y
                 local h = selectionBox.h
-                selectionBox.y = y + h - 1
+                selectionBox.oy = y + h - 1
                 selectionBox.h = h * -1 + 2
             end
 
@@ -712,7 +714,7 @@ palette.rendering = false
 
 palette.w = 2
 palette.anchorW = "right"
-palette.expandH = true
+palette.fillH = true
 
 local colorL = palette:addControl()
 local colorR = palette:addControl()
@@ -783,9 +785,9 @@ editFocusStyle.backgroundColor = colors.black
 local function createEditField(fieldName, text, parent)
     text = text or ""
 
-    local h = engine.HContainer:new()
+    local h = parent:addHContainer()
     h.h = 1
-    h.expandW = true
+    h.fillW = true
     local label = h:addControl()
     label.text = fieldName
     label.h = 1
@@ -793,13 +795,11 @@ local function createEditField(fieldName, text, parent)
     local edit = h:addLineEdit()
     edit.inheritStyle = false
     edit.h = 1
-    edit.expandW = true
+    edit.fillW = true
     edit.text = text
     edit.normalStyle = editStyle
     edit.focusStyle = editFocusStyle
     edit.style = editStyle
-
-    parent:add(h)
 
     return edit
 end
@@ -821,16 +821,16 @@ local function createResizeDialogue(fn)
     local wi = createDialogue()
     wi.text = "Resize"
     wi.vContainer = wi:addVContainer()
-    wi.vContainer.expandW = true
-    wi.vContainer.expandH = true
-    wi.vContainer.y = 1
+    wi.vContainer.fillW = true
+    wi.vContainer.fillH = true
+    wi.vContainer.oy = 1
     wi.wEdit = createEditField("W: ", tostring(_w), wi.vContainer)
     wi.hEdit = createEditField("H: ", tostring(_h), wi.vContainer)
     wi.ok = wi:addButton()
     wi.ok.text = "Ok"
     wi.ok.h = 1
-    wi.ok.expandW = true
-    wi.ok.centerText = true
+    wi.ok.fillW = true
+    wi.ok.textAlignW = "center"
     wi.ok.anchorH = "down"
     wi.ok.pressed = function()
         local w = tonumber(wi.wEdit.text) or _w
@@ -839,7 +839,6 @@ local function createResizeDialogue(fn)
         wi:queueFree()
         --wi.wEdit:queueFree()
     end
-    wi:expandChildren()
 
     wi.wEdit:grabFocus()
 end

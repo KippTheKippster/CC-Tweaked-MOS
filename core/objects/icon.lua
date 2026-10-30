@@ -16,30 +16,31 @@ Icon._centered = false
 Icon.offsetX = 0
 Icon.offsetY = 0
 
-Icon:defineProperty('texture', {
-    get = function(o) return o._texture end,
+Icon:defineProperty('texture',
+    function(o) return o._texture end,
     ---@param o Icon
     ---@param value table
-    set = function(o, value)
+    function(o, value)
         local same = o._texture == value
         o._texture = value
         if same == false then
+            o.w, o.h = o:getTextureSize()
             o:resize()
             o:queueDraw()
         end
     end
-})
+)
 
-Icon:defineProperty('centered', {
-    get = function(o) return o._centered end,
-    set = function(o, value)
+Icon:defineProperty('centered',
+    function(o) return o._centered end,
+    function(o, value)
         local same = o._centered == value
         o._centered = value
         if same == false then
             o:centerPosition()
         end
     end
-})
+)
 
 function Icon:treeEntered()
     control.treeEntered(self)
@@ -66,8 +67,8 @@ function Icon:getTextureSize()
 	return w, h
 end
 
-function Icon:getMinimumSize()
-    local minW, minH = control.getMinimumSize(self)
+function Icon:getMinSize()
+    local minW, minH = control.getMinSize(self)
     local tW, tH = self:getTextureSize()
     return math.max(minW, tW), math.max(minH, tH)
 end

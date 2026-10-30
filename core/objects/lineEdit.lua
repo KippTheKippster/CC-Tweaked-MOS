@@ -1,8 +1,9 @@
 ---@param control Control
----@param input Input
+---@param engine Engine
 ---@param style Style
+---@param styleFocus Style
 ---@return LineEdit
-return function(control, input, style, styleFocus)
+return function(control, engine, style, styleFocus)
 ---@class LineEdit : Control
 local LineEdit = control:newClass()
 LineEdit.__type = "LineEdit"
@@ -20,17 +21,17 @@ LineEdit.clipText = true
 LineEdit.lineScroll = 0
 LineEdit._fitToText = false
 
-LineEdit:defineProperty("cursorX", {
-    get = function (o)
+LineEdit:defineProperty("cursorX",
+    function (o)
         return o._cursorX
     end,
-    set = function (o, x)
+    function (o, x)
         x = math.max(x, 0)
         x = math.min(x, #o.text)
         o._cursorX = x
         o:queueDraw()
     end
-})
+)
 
 function LineEdit:render()
     local w = self.w - 1 - (self.marginL + self.marginR)
@@ -49,7 +50,7 @@ end
 function LineEdit:updateCursor()
     local s = self:getStyle()
     --term.setCursorPos(self.gx + #self.text + self.cursorOffset + self.marginL + 1, self.gy + 1)
-    term.setCursorPos(self.cursorX - self.offsetTextX + self.marginL + self.gx + 1, self.gy + 1)
+    term.setCursorPos(self.cursorX - self.offsetTextX + self.paddingL + self.gx + 1, self.gy + 1)
     term.setTextColor(s.textColor)
     term.setBackgroundColor(s.backgroundColor)
     term.setCursorBlink(true)
@@ -115,7 +116,7 @@ function LineEdit:input(data)
         self.cursorX = self.cursorX + #data[2]
     elseif event == "key" then
         local k = data[2]
-        local ctrl = input.isKey(keys.leftCtrl)
+        local ctrl = engine.input.isKey(keys.leftCtrl)
         if k == keys.backspace then
             if ctrl then
                 local i = findPrevWord(self.text, self.cursorX)

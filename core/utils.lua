@@ -123,5 +123,44 @@ local Utils = {
     getWindowChar = getWindowChar,
 }
 
+
+---@param size number
+---@param prefix string
+---@return integer
+function Utils.toKibi(size, prefix)
+    if prefix == "" then
+        return math.ceil(size)
+    elseif prefix == "Ki" then
+        return math.ceil(10*size / 2^10) / 10
+    elseif prefix == "Mi" then
+        return math.ceil(10*size / 2^20) / 10
+    elseif prefix == "Gi" then
+        return math.ceil(10*size / 2^30) / 10
+    else
+        return -1
+    end
+end
+
+---@param size number
+---@return string
+function Utils.getKibiPrefix(size)
+    if size >= 2^30 then
+       return "Gi"
+    elseif size >= 2^20 then
+        return "Mi"
+    elseif size >= 100 then
+        return "Ki"
+    else
+        return ""
+    end
+end
+
+---@param size number
+---@return integer, string
+function Utils.sizeToKibi(size)
+    local prefix = Utils.getKibiPrefix(size)
+    return Utils.toKibi(size, prefix), prefix
+end
+
 ---@type Utils
 return Utils

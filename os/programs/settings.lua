@@ -11,24 +11,25 @@ local engine = require(mos.mosDotPath .. ".core.engine")
 mos.applyTheme(engine)
 
 local main = engine.root:addVContainer()
-main.expandW = true
-main.expandH = true
+main.fillW = true
+main.fillH = true
+main.fitToChildrenW = false
+main.fitToChildrenH = false
 
 local scroll = main:addScrollContainer()
-scroll.expandW = true
-scroll.expandH = true
+scroll.fillW = true
+scroll.fillH = true
 
 local list = scroll:addVContainer()
-list.expandW = true
-list.expandH = true
+list.fillW = true
 list.marginL = 1
 list.marginR = 1
 
 local bottom = main:addHContainer()
-bottom.expandW = true
+bottom.fillW = true
 
 local bottomSpacer = bottom:addControl()
-bottomSpacer.expandW = true
+bottomSpacer.fillW = true
 
 local saveButton = bottom:addButton("\16Save")
 saveButton.disabled = true
@@ -39,17 +40,17 @@ end
 
 local function addSeperator(label)
     local seperator = list:addControl(label)
-    seperator.expandW = true
-    seperator.centerText = true
+    seperator.fillW = true
+    seperator.textAlignW = "center"
     seperator.style = engine.Button.styleDisabled
+    seperator.paddingU = 1
     return seperator
 end
 
 local function addLine(label, control)
     local line = list:addControl(label)
-    line.expandW = true
+    line.fillW = true
     line:add(control)
-    control.w = #control.text
     control.anchorW = "right"
 end
 
@@ -61,7 +62,7 @@ end
 local function addSetting(name, label, control, addRevert)
     ---@class Setting : Control
     local setting = list:addControl(label)
-    setting.expandW = true
+    setting.fillW = true
     ---@type Button?
     setting.revertButton = nil
     setting:add(control)
@@ -102,7 +103,6 @@ local function addSetting(name, label, control, addRevert)
         end
     end
 
-    control.w = #control.text
     control.anchorW = "right"
     if addRevert ~= false then
         setting:checkRevert()
@@ -110,7 +110,7 @@ local function addSetting(name, label, control, addRevert)
     return setting
 end
 
-addSeperator("-MOS-")
+addSeperator("-MOS-").paddingU = 0
 
 addLine("Version", engine.Control:new(mos.getVersion()))
 local bInstall = engine.Button:new"[Run]"
@@ -123,10 +123,10 @@ addLine("Installer", bInstall)
 addSeperator("-Computer-")
 
 do
-    local freeSpace = math.floor(fs.getFreeSpace("") * 1e-4) / 100
-    local capacity = math.floor(fs.getCapacity("") * 1e-4) / 100
+    local freeSpace, prefix = engine.utils.sizeToKibi(fs.getFreeSpace(""))
+    local capacity = engine.utils.toKibi(fs.getCapacity(""), prefix)
     addLine("ID", engine.Control:new("#" .. tostring(os.getComputerID())))
-    addLine("Free Space", engine.Control:new(freeSpace .. "/" .. capacity  .. " MB"))
+    addLine("Free Space", engine.Control:new(("%d/%d %sB"):format(freeSpace, capacity, prefix)))
 end
 
 do
@@ -137,7 +137,7 @@ do
 
     addLine("Label", labelEdit)
     labelEdit.w = 16
-    labelEdit:resize()
+    --labelEdit:resize()
 end
 
 addSeperator("-Appearance-")

@@ -16,8 +16,6 @@ end
 
 local main = engine.root:addVContainer()
 main.rendering = true
-main.fitToChildrenW = true
-main.fitToChildrenH = true
 main.anchorW = "center"
 main.anchorH = "center"
 

@@ -56,7 +56,7 @@ local input = read(nil, nil, function (text)
 end, startText)
 
 if callbackFunction then
-    callbackFunction(tokenise(input))
+    callbackFunction(input, tokenise(input))
 end
 
 if mosWindow then

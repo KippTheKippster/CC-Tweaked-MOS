@@ -1,15 +1,12 @@
----@param engine Engine
 ---@param control Control
----@param button Button
 ---@param style Style
 ---@return WindowControl
-return function(engine, control, button, style, styleFocus, styleDown)
+return function(control, style, styleFocus, styleDown)
 ---@class WindowControl : Control
 local WindowControl = control:newClass()
 WindowControl.__type = "WindowControl"
 
 WindowControl.draggable = true
-WindowControl.clipText = true
 WindowControl.exitButton = nil
 WindowControl.scaleButton = nil
 WindowControl.minimizeButton = nil
@@ -18,12 +15,13 @@ WindowControl._minH = 4
 WindowControl.oldW = 10
 WindowControl.oldH = 4
 WindowControl._fullscreen = false
+
 ---@type boolean
 WindowControl.fullscreen = nil
 
-WindowControl:defineProperty('fullscreen', {
-    get = function(o) return o._fullscreen end,
-    set = function(o, value)
+WindowControl:defineProperty('fullscreen',
+    function(o) return o._fullscreen end,
+    function(o, value)
         ---@type WindowControl
         local wi = o
         if wi._fullscreen == value then
@@ -32,29 +30,28 @@ WindowControl:defineProperty('fullscreen', {
 
         wi._fullscreen = value
         if value then
-            wi.gx = 0
-            wi.gy = 0
+            wi.x = 0
+            wi.y = 0
             wi.oldW = wi.w
             wi.oldH = wi.h
-            wi.expandW = true
-            wi.expandH = true
+            wi.fillW = true
+            wi.fillH = true
             wi:toFront()
             wi:grabFocus()
             wi:emitSignal(wi.fullscreenChangedSignal)
         else
-            wi.expandW = false
-            wi.expandH = false
+            wi.fillW = false
+            wi.fillH = false
             wi.w = wi.oldW
             wi.h = wi.oldH
             wi:emitSignal(wi.fullscreenChangedSignal)
         end
     end
-})
+)
 
-WindowControl.closedSignal = WindowControl:createSignal()
-WindowControl.fullscreenChangedSignal = WindowControl:createSignal()
+WindowControl.closedSignal = WindowControl:newSignal()
+WindowControl.fullscreenChangedSignal = WindowControl:newSignal()
 WindowControl.shadow = false
-WindowControl._marginL = 2
 WindowControl._fitToText = false
 
 WindowControl.style = style
@@ -93,27 +90,21 @@ function WindowControl:init(text)
     scale.h = 1
     scale.propogateFocusUp = true
 
-    scale.drag = function(o, b, x, y, rx, ry)
-        local gx = x + self.gx - 1
-        local gy = y + self.gy - 1
+    scale.drag = function(o, b, x, y, dx, dy)
+        local w = self.w
+        self.w = self.w - x + 1
+        self.w = math.max(self.minW, self.w)
+        local dw = w - self.w
+        self.x = self.x + dw
 
-        local dx = self.gx - gx
-        local dy = self.gy - gy
+        local h = self.h
+        self.h = self.h - y + 1
+        self.h = math.max(self.minH, self.h)
+        local dh = h - self.h
+        self.y = self.y + dh
 
-        local w = self.w + dx
-        local h = self.h + dy
-
-        if w >= self.minW then
-            self.gx = gx
-            self.w = self.w + dx
-            self.oldW = self.w
-        end
-
-        if h >= self.minH then
-            self.gy = gy
-            self.h = self.h + dy
-            self.oldH = self.h
-        end
+        self.oldW = self.w
+        self.oldH = self.h
     end
 
     scale.doublePressed = function(o)
@@ -130,7 +121,10 @@ function WindowControl:init(text)
     min.pressed = function(o)
         self.visible = false
     end
+end
 
+function WindowControl:getText()
+    return "  " .. self.text
 end
 
 function WindowControl:close()
@@ -145,11 +139,13 @@ function WindowControl:drag(b, x, y, rx, ry)
     self.h = self.oldH
     self.oldW = self.w
     self.oldH = self.h
-    if self.fullscreen == true then
+    if self.fullscreen then
         local tw = self.w
         self.fullscreen = false
         local gx = x + self.gx - 1
-        self.gx = math.floor(gx - self.w * (x / tw) + 0.5)
+        local ox = gx - self.parent.gx
+        -- TODO THINK FIXME
+        self.x = math.floor(ox - self.w * (x / tw) + 0.5)
     end
 end
 

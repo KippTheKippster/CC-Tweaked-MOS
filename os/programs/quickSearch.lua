@@ -5,15 +5,11 @@ local engine = mos.engine
 ---@class QuickSearch : LineEdit
 local qs = engine.LineEdit:new()
 qs.h = 1
-qs.expandW = true
+qs.fillW = true
 qs.visible = false
 qs.styleFocus = mos.style.toolbar
-qs.marginL = 2
+qs.paddingL = 2
 qs._skip = true
-function qs:init()
-    engine.LineEdit.init(self)
-    qs.x = 2
-end
 
 function qs:treeEntered()
     self:resize()
@@ -36,7 +32,7 @@ while index <= #dirs do
     for i, file in ipairs(files) do
         if fs.isDir(file) then
             local path = fs.combine(dir, file)
-            if not disk.isPresent(path) then       
+            if not disk.isPresent(path) then
                 if file ~= "rom" and file ~= "mos" and file ~= ".logs" and file ~= ".mosdata" then
                     table.insert(dirs, path)
                 end
@@ -113,9 +109,11 @@ function qs:focusChanged()
 end
 
 local list = qs:addDropdown()
+list.list.__name = "qs"
 list.propogateFocusUp = true
 list.rendering = false
 list.mouseIgnore = true
+list.x = -2
 qs.list = list
 
 local icon = qs:addControl()
@@ -124,6 +122,7 @@ icon.text = string.char(187)
 icon.fitToText = false
 icon.w = 2
 icon.h = 1
+icon.x = -2
 icon.inheritStyle = true
 
 function qs:refreshList ()
@@ -158,6 +157,10 @@ function qs:refreshList ()
             if option.text == pathSelection then
                 list.shortcutSelection = option
                 option:down()
+            end
+
+            option.render = function ()
+                engine.Button.render(option)
             end
 
             count = count + 1

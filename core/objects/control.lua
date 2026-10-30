@@ -1,3 +1,4 @@
+local expect = require"cc.expect"
 ---@return Control
 ---@param object Object
 ---@param engine Engine
@@ -17,44 +18,51 @@ Control._gx = 0
 Control.gy = nil
 Control._gy = 0
 
----Local X, the x offset from the parent
+---Local X, the x position relative to the parent's position
 ---@type number
 Control.x = nil
 Control._x = 0
 
----Local Y, the y offset from the parent
+---Local Y, the y position relative to the parent's position
 ---@type number
 Control.y = nil
 Control._y = 0
 
----Width
+---Offset X, the x offset from the parent (respects margin and anchor)
+Control._ox = 0
+
+---Offset Y, the y offset from the parent (respects margin and anchor)
+Control._oy = 0
+
+---Base Width, the base width of the control (does not include padding, see control.toPaddedW)
 ---@type number
 Control.w = nil
 Control._w = 1
 
----Height
+---Base Height, the base height of the control (does not include padding, see control.toPaddedH)
 ---@type number
 Control.h = nil
 Control._h = 1
 
----Minimum Width, the absolute minimum width of the object, note that the actual minimum width can be higher (see control.getMinimumSize)
+---Minimum Width, the absolute minimum width of the control, note that the actual minimum width can be higher (see control.getMinSize)
 ---@type number
 Control.minW = nil
 Control._minW = 1
 
----Minimum Height, the absolute minimum height of the object, note that the actual minimum height can be higher (see control.getMinimumSize)
+---Minimum Height, the absolute minimum height of the control, note that the actual minimum height can be higher (see control.getMinSize)
 ---@type number
 Control.minH = nil
 Control._minH = 1
 
 ---@type boolean
-Control.expandW = nil
-Control._expandW = false
+Control.fillW = nil
+Control._fillW = false
 
 ---@type boolean
-Control.expandH = nil
-Control._expandH = false
+Control.fillH = nil
+Control._fillH = false
 
+---TODO RENAME
 ---@type boolean
 Control.fitToText = nil
 Control._fitToText = true
@@ -71,7 +79,9 @@ Control.visible = nil
 Control._visible = true
 
 Control.inheritStyle = false
-Control.centerText = false
+Control._textAlignW = "left"
+---@type string
+Control.textAlignW = nil
 Control.focus = false
 Control.propogateFocusUp = false
 Control.clipText = true
@@ -84,280 +94,236 @@ Control.topLevel = false
 Control.children = {}
 ---@type Control
 Control.parent = nil
+
 Control._marginL = 0
 ---@type number
 Control.marginL = nil
 Control._marginR = 0
 ---@type number
+Control.marginU = nil
+Control._marginU = 0
+---@type number
+Control.marginD = nil
+Control._marginD = 0
+---@type number
 Control.marginR = nil
+
+Control._paddingL = 0
+---@type number
+Control.paddingL = nil
+Control._paddingR = 0
+---@type number
+Control.paddingU = nil
+Control._paddingU = 0
+---@type number
+Control.paddingD = nil
+Control._paddingD = 0
+---@type number
+Control.paddingR = nil
+
+
 Control.offsetTextX = 0
 
+---@type string
 Control.anchorW = nil
+---@type string
 Control.anchorH = nil
 
 Control._anchorW = "left"
 Control._anchorH = "up"
 
-Control.visibilityChangedSignal = Control:createSignal()
-Control.focusChangedSignal = Control:createSignal()
+Control._repositionQueued = false
+Control._resizeQueued = false
 
-Control:defineProperty('gx', {
-    get = function(o) return o._gx end,
-    set = function(o, value)
-        local same = o._gx == value
-        o._gx = value
-        if same == false then
-            o:updateGlobalPosition()
-            o:transformChanged()
-            o._x = o._gx - o.parent._gx
+Control.visibilityChangedSignal = Control:newSignal("visibility_changed")
+Control.focusChangedSignal = Control:newSignal("focus_changed")
+Control.sortHintSignal = Control:newSignal("sort_hint")
+
+--- Create a property with name 'name' that updates '_name' and calls function 'set' if the value of '_name' has changed
+---@param name string
+---@param set function
+local function definePropertySet(name, set)
+    local privName = "_" .. name
+    Control:defineProperty(name,
+    function (o)
+        return o[privName]
+    end,
+    function (o, value)
+        local prev = o[privName]
+        local dif = prev ~= value
+        if dif then
+            o[privName] = value
+            set(o, value, prev)
         end
     end
-})
-
-Control:defineProperty('gy', {
-    get = function(o) return o._gy end,
-    set = function(o, value)
-        local same = o._gy == value
-        o._gy = value
-        if same == false then
-            o:updateGlobalPosition()
-            o:transformChanged()
-            o._y = o._gy - o.parent._gy
-        end
-    end
-})
-
-function Control:updateGlobalPosition()
-    for i = 1, #self.children do
-        local c = self:getChild(i)
-        c.gx = self.gx + c.x
-        c.gy = self.gy + c.y
-    end
-
-    --self._x = self.parent.globalX - self.globalX
-    --self._y = self.parent.globalY - self.globalY
-
-    self:queueDraw()
+)
 end
 
-Control:defineProperty('x', {
-    get = function(o)
-        return o._x end,
-    set = function(o, value)
-        local same = o._x == value
-        o._x = value
-        if same == false then
-            o:updatePosition()
-            o:transformChanged()
-        end
-    end
-})
 
-Control:defineProperty('y', {
-    get = function(o) return o._y end,
-    set = function(o, value)
-        local same = o._y == value
-        o._y = value
-        if same == false then
-            o:updatePosition()
-            o:transformChanged()
-        end
-    end
-})
-
-function Control:updatePosition()
-    if self.parent == nil then
+---@param self Control
+---@param x number
+---@param y number
+local function setGXY(self, x, y)
+    if not self.parent then
         error("Unable to update position control with no parent! __name: " .. self.__name, 4)
     end
 
-    self.gx = self.parent.gx + self.x
-    self.gy = self.parent.gy + self.y
-    self:queueDraw()
-end
-
-Control:defineProperty('w', {
-    get = function(o) return o._w end,
-    set = function(o, value)
-        local same = o._w == value
-        o._w = value
-        if same == false then
-            o:queueDraw()
-            o:expandChildren()
-            o:transformChanged()
-            o:sizeChanged()
-        end
-    end
-})
-
-Control:defineProperty('h', {
-    get = function(o) return o._h end,
-    set = function(o, value)
-        local same = o._h == value
-        o._h = value
-        if same == false then
-            o:queueDraw()
-            o:expandChildren()
-            o:transformChanged()
-            o:sizeChanged()
-        end
-    end
-})
-
-Control:defineProperty('minW', {
-    get = function(o) return o._minW end,
-    set = function(o, value)
-        local same = o._minW == value
-        o._minW = value
-        if same == false then
-            o:resize()
-        end
-    end
-})
-
-Control:defineProperty('minH', {
-    get = function(o) return o._minH end,
-    set = function(o, value)
-        local same = o._minH == value
-        o._minH = value
-        if same == false then
-            o:resize()
-        end
-    end
-})
-
-
-Control:defineProperty('expandW', {
-    get = function(o) return o._expandW end,
-    set = function(o, value)
-        local same = o._expandW == value
-        o._expandW = value
-        if same == false and o._expandW == true then
-            o:resize()
-        end
-    end
-})
-
-Control:defineProperty('expandH', {
-    get = function(o) return o._expandH end,
-    set = function(o, value)
-        local same = o._expandH == value
-        o._expandH = value
-        if same == false then
-            o:resize()
-        end
-    end
-})
-
-Control:defineProperty('marginL', {
-    get = function(o) return o._marginL end,
-    set = function(o, value)
-        local same = o._marginL == value
-        o._marginL = value
-        if same == false then
-            o:resize()
-        end
-    end
-})
-
-Control:defineProperty('marginR', {
-    get = function(o) return o._marginR end,
-    set = function(o, value)
-        local same = o._marginR == value
-        o._marginR = value
-        if same == false then
-            o:resize()
-        end
-    end
-})
-
----@param text string?
-function Control:init(text)
-    object.init(self, text)
-    self.children = {}
-    if text then
-        self._text = text
-    end
-end
-
-function Control:expandChildren()
-    for i = 1, #self.children do
-        self:getChild(i):resize()
-    end
-end
-
-function Control:resize()
-    local minW, minH = self:getMinimumSize()
-    local c = self
-    local p = c.parent
-    if not p then
+    local changed = self._gx ~= x or self._gy ~= y
+    if not changed then
         return
     end
 
-    local w, h = 0, 0
-    if c.expandW then
-        w = p.w - p.marginR - c.x
-    elseif not c.fitToText then
-        w = self.w
+    self._gx = x
+    self._gy = y
+    self._x = self._gx - self.parent._gx
+    self._y = self._gy - self.parent._gy
+
+    for _, c in ipairs(self.children) do
+        setGXY(c, self.gx + c.x, self.gy + c.y)
     end
 
-    if c.expandH then
-        h = p.h - c.y
-    elseif not c.fitToText then
-        h = self.h
-    end
-
-    c.w, c.h = math.max(minW, w), math.max(minH, h)
-
-    -- HACK! rework anchor
-    if c.anchorW == "right" then
-        c.x = p.w - c.w
-    elseif c.anchorW == "center" then
-        c.x = math.floor(p.w / 2 + 0.5) - math.floor(c.w / 2 + 0.5)
-    end
-
-    if c.anchorH == "down" then
-        c.y = p.h - c.h
-    elseif c.anchorH == "center" then
-        c.y = math.floor(p.h / 2 + 0.5) - math.floor(c.h / 2 + 0.5)
-    end
+    self:transformChanged()
+    self:queueDraw()
 end
 
-function Control:getMinimumSize()
-    if not self.visible then
-        return 0, 0
-    end
-
-    local m = self.marginL + self.marginR
-    local minW = self.minW + m
-    local minH = self.minH
-    if self.fitToText then
-        minW = math.max(#self.text + m, minW)
-        minH = math.max(1, minH)
-    end
-
-    return minW, minH
+local function setXY(self, x, y)
+    setGXY(self, self.parent.gx + x, self.parent.gy + y)
 end
 
-Control:defineProperty('fitToText', {
-    get = function(o) return o._fitToText end,
-    set = function(o, value)
-        o._fitToText = value
-        o:resize()
+Control:defineProperty('gx',
+    function (o)
+        return o._gx
+    end,
+    function(o, value)
+        local new, old = value, o._gx
+        setGXY(o, new, o._gy)
+        local delta = new - old
+        o._ox = o._ox + delta
     end
-})
+)
 
-Control:defineProperty('text', {
-    get = function(o) return o._text end,
-    set = function(o, value)
-        local same = o._text == value
-        o._text = value
-        if same == false then
-            o:resize()
-            o:queueDraw()
-            o:textChanged()
-        end
+Control:defineProperty('gy',
+    function (o)
+        return o._gy
+    end,
+    function(o, value)
+        local new, old = value, o._gy
+        setGXY(o, o._gx, new)
+        local delta = new - old
+        o._oy = o._oy + delta
     end
-})
+)
+
+definePropertySet('x', function(o, new, old)
+    setXY(o, o._x, o._y)
+    local delta = new - old
+    o._ox = o._ox + delta
+end)
+
+definePropertySet('y', function(o, new, old)
+    setXY(o, o._x, o._y)
+    local delta = new - old
+    o._oy = o._oy + delta
+end)
+
+definePropertySet('w', function(o)
+    o._w = math.max(o._w, o._minW)
+    o:queueDraw()
+    o:transformChanged()
+    o:sizeChanged()
+    o:queueReposition()
+    o:emitSignal(o.sortHintSignal)
+    for _, c in ipairs(o.children) do
+        c:queueRetransform()
+    end
+end)
+
+definePropertySet('h', function(o)
+    o._h = math.max(o._h, o._minH)
+    o:queueDraw()
+    o:transformChanged()
+    o:sizeChanged()
+    o:queueReposition()
+    o:emitSignal(o.sortHintSignal)
+    for _, c in ipairs(o.children) do
+        c:queueRetransform()
+    end
+end)
+
+definePropertySet('minW', function(o)
+    o.w = math.max(o.w, o._minW)
+    o:queueRetransform()
+end)
+
+definePropertySet('minH', function(o)
+    o.h = math.max(o.h, o._minH)
+    o:queueRetransform()
+end)
+
+definePropertySet('fillW', function(o)
+    o:queueRetransform()
+end)
+
+definePropertySet('fillH', function(o)
+    o:queueRetransform()
+end)
+
+definePropertySet('marginL', function(o)
+    o:queueRetransform()
+end)
+
+definePropertySet('marginR', function(o)
+    o:queueRetransform()
+end)
+
+definePropertySet('marginU', function(o)
+    o:queueRetransform()
+end)
+
+definePropertySet('marginD', function(o)
+    o:queueRetransform()
+end)
+
+definePropertySet('paddingL', function(o)
+    o:queueRetransform()
+end)
+
+definePropertySet('paddingR', function(o)
+    o:queueRetransform()
+end)
+
+definePropertySet('paddingU', function(o)
+    o:queueRetransform()
+end)
+
+definePropertySet('paddingD', function(o)
+    o:queueRetransform()
+end)
+
+definePropertySet('anchorW', function(o)
+    o:queueRetransform()
+end)
+
+definePropertySet('anchorH', function(o)
+    o:queueRetransform()
+end)
+
+definePropertySet('text', function(o, new, old)
+    o:queueRetransform()
+    o:queueDraw()
+    o:textChanged()
+    if #new ~= #old then
+        o:emitSignal(o.sortHintSignal)
+    end
+end)
+
+definePropertySet('fitToText', function(o)
+    o:queueResize()
+end)
+
+definePropertySet('textAlignW', function(o)
+    o:queueDraw()
+end)
 
 ---@param o Control
 local function propogateVisiblity(o)
@@ -371,69 +337,195 @@ local function propogateVisiblity(o)
     end
 end
 
-Control:defineProperty('visible', {
-    get = function(o) return o._visible end,
-    set = function(o, value)
-        local same = o._visible == value
-        o._visible = value
-        if same == false then
-            o:visibilityChanged()
-            o:emitSignal(o.visibilityChangedSignal)
-            propogateVisiblity(o)
-            o:queueDraw()
-        end
-    end
-})
+definePropertySet('visible', function(o)
+    o:visibilityChanged()
+    o:emitSignal(o.visibilityChangedSignal)
+    o:emitSignal(o.sortHintSignal)
+    propogateVisiblity(o)
+    o:queueDraw()
+end)
 
-Control:defineProperty('anchorW', {
-    get = function(o) return o._anchorW end,
-    set = function(o, value)
-        local same = o._anchorW == value
-        o._anchorW = value
-        if same == false then
-            o:resize()
-        end
+---@param text string?
+function Control:init(text)
+    object.init(self, text)
+    self.children = {}
+    if text then
+        self._text = text
     end
-})
+end
 
-Control:defineProperty('anchorH', {
-    get = function(o) return o._anchorH end,
-    set = function(o, value)
-        local same = o._anchorH == value
-        o._anchorH = value
-        if same == false then
-            o:resize()
-        end
+function Control:reposition()
+    local c = self
+    local p = c.parent
+    if not p then
+        return
     end
-})
+
+    local x = p.paddingL + c.marginL + c._ox
+    local y = p.paddingU + c.marginU + c._oy
+
+    local pw, ph = 0, 0
+    if c.anchorW ~= "left" or c.anchorH ~= "up" then
+        pw, ph = p:getFillSize()
+    end
+
+    if c.anchorW == "right" then
+        x = x + pw - c:getPaddedW()
+    elseif c.anchorW == "center" then
+        x = x + math.floor(pw / 2 + 0.5) - math.floor(c:getPaddedW() / 2 + 0.5)
+    end
+
+    if c.anchorH == "down" then
+        y = y + ph - c:getPaddedH()
+    elseif c.anchorH == "center" then
+        y = y + math.floor(ph / 2 + 0.5) - math.floor(c:getPaddedH() / 2 + 0.5)
+    end
+
+    setXY(self, x, y)
+end
+
+function Control:getDesiredSize()
+    local c = self
+    local p = c.parent
+    if not p then
+        return 0, 0
+    end
+
+    local w, h = self.w, self.h
+
+    local fillW, fillH = 0, 0
+    if c.fillW or c.fillH then
+        fillW, fillH = p:getFillSize()
+    end
+
+    local minW, minH = self:getMinSize()
+    local _maxW, _maxH = self:getMaxSize()
+    if _maxW > -1 then
+        w = math.min(w, _maxW)
+    end
+
+    if _maxH > -1 then
+        h = math.min(h, _maxH)
+    end
+
+    if c.fillW then
+        w = fillW - c.paddingL - c.paddingR - c.marginL - c.marginR
+        w = math.min(w, fillW)
+    end
+
+    if c.fillH then
+        h = fillH - c.paddingU - c.paddingD - c.marginU - c.marginD
+        h = math.min(h, fillH)
+    end
+
+    w = math.max(minW, w)
+    h = math.max(minH, h)
+    return w, h
+end
+
+function Control:resize()
+    self.w, self.h = self:getDesiredSize()
+end
+
+---@param w number
+function Control:toPaddedW(w)
+    return w + self.paddingL + self.paddingR
+end
+
+---@param h number
+function Control:toPaddedH(h)
+    return h + self.paddingU + self.paddingD
+end
+
+function Control:getPaddedW()
+    return self:toPaddedW(self.w)
+end
+
+function Control:getPaddedH()
+    return self:toPaddedH(self.h)
+end
+
+function Control:getMinSize()
+    if not self.visible then
+        return 0, 0
+    end
+
+    local minW = self.minW
+    local minH = self.minH
+    if self.fitToText and self.text ~= "" then
+        minW = math.max(#self.text, minW)
+        minH = math.max(1, minH)
+    end
+
+    return minW, minH
+end
+
+function Control:getMaxSize()
+    return -1, -1
+end
+
+-- Determines the max amount of space a child node should occupy when the child has fillW or fillH = true
+function Control:getFillSize()
+    return self.w, self.h
+end
 
 Control.shadow = false -- Change this to style
 
 --- WARNING: Use queueFree instead if you simply want to remove the control.
---- Removes control's variables and signals and makes the object throw an error on setting and getting variables 
+--- Removes control's variables and signals and makes the object throw an error on setting and getting variables
 function Control:free()
     object.free(self)
 end
 
 function Control:queueFree()
-    table.insert(engine.freeQueue, self)
+    -- TODO add check
+    engine.queueFree(self)
     if self:inFocus() then
         self:releaseFocus()
     end
 end
 
 function Control:queueDraw()
-    engine.queueRedraw = true
+    engine.queueDraw()
+end
+
+function Control:queueReposition()
+    self._repositionQueued = true
+end
+
+function Control:queueResize()
+    self._resizeQueued = true
+end
+
+function Control:queueRetransform()
+    self:queueReposition()
+    self:queueResize()
+end
+
+---Calls the function at the end of the render cycle
+---Note: the calling control will be the first argument, if that is not desired use engine.callDeferred instead
+---@param fn function
+---@param ... any
+function Control:callDeferred(fn, ...)
+    engine.callDeferred(fn, {self, ...})
 end
 
 function Control:getBorders()
+    local w, h = self:getPaddedW(), self:getPaddedH()
     local left = self._gx + 1
     local up = self._gy + 1
-    local right = self._gx + self._w
-    local down = self._gy + self._h
+    local right = self._gx + w
+    local down = self._gy + h
     return left, up, right, down
 end
 
+---Creates and assigns a new style object for the control
+function Control:newStyle()
+    self.style = engine.style:inherit()
+    return self.style
+end
+
+---@return Style
 function Control:getStyle()
     if self.inheritStyle then
         return self.parent:getStyle()
@@ -442,16 +534,36 @@ function Control:getStyle()
     end
 end
 
+function Control:getText()
+    return self.text
+end
+
+function Control:updateTree()
+    self:update()
+    for _, c in ipairs(self.children) do
+        c:updateTree()
+    end
+end
+
+function Control:update()
+    if self._resizeQueued then
+        self._resizeQueued = false
+        self:resize()
+    end
+    if self._repositionQueued then
+        self._repositionQueued = false
+        self:reposition()
+    end
+end
+
 -- Determines how the control object is drawn
 function Control:render()
-    local s = self:getStyle()
     --SHADOW
-    self:drawShadow(s)
+    self:drawShadow()
     --PANEL
-    local l, u, r, d = self:getBorders()
-    self:drawPanel(l, u, r, d, s)
+    self:drawPanel()
     --TEXT
-    self:write(self.text, s)
+    self:drawText()
 end
 
 -- Draws the control object if it is valid, NOTE this should not be used to redraw object, use 'queueDraw' instead
@@ -463,117 +575,55 @@ function Control:draw()
     self:render()
 end
 
-local function writeShadow(x, y)
-    local char = engine.getChar(x, y)
-    if not char then
-        return
-    end
-
-    term.setCursorPos(x, y)
-    term.setTextColor(char.textColor)
-    term.setBackgroundColor(char.backgroundColor)
-    term.write(string.char(127))
-end
-
----@param style Style?
-function Control:drawShadow(style)
-    if self.shadow ~= true then return end
-    if self.w == 0 or self.h == 0 then return end
-    local s = style or self:getStyle()
-    for i = 1 - s.shadowOffsetU, self.h do
-        writeShadow(self.gx + self.w + 1, self.gy + i)
-    end
-
-    for i = 1 - s.shadowOffsetU, self.h do
-        writeShadow(self.gx, self.gy + i)
-    end
-
-    for i = 0, self.w + 1 do
-        writeShadow(self.gx + i, self.gy + self.h + 1)
+function Control:drawShadow()
+    if self.shadow then
+        engine.drawShadow(self.gx, self.gy, self.w, self.h, self:getStyle())
     end
 end
 
----@param left number
----@param up number
----@param right number
----@param down number
----@param style Style?
-function Control:drawPanel(left, up, right, down, style)
-    local s = style or self:getStyle()
-    if s.background == true or s.background == nil then
-        paintutils.drawFilledBox(
-            left,
-            up,
-            right,
-            down,
-            s.backgroundColor
-        )
-    end
-
-    if s.border then
-        paintutils.drawBox(
-            left,
-            up,
-            right,
-            down,
-            s.borderColor
-        )
-    end
-end
-
-local function getTextPosition(_x, _y, _w, _h, center, text)
-    local x = 0
-    local y = 0
-    if center == false then
-        x = _x
-        y = _y
-    else
-        x = _x + math.ceil((_w - #text) / 2)
-        y = _y + math.floor((_h) / 2)
-    end
-
-    return x + 1, y + 1
-end
-
-function Control:getTextPosition(text)
-    return getTextPosition(self._gx, self._gy, self._w, self._h, self.centerText, text)
+function Control:drawPanel()
+    local l, u, r, d = self:getBorders()
+    engine.drawPanel(l, u, r, d, self:getStyle())
 end
 
 ---@param text string
----@param style Style?
-function Control:write(text, style)
-    if text == "" or text == nil then
-        return
+function Control:formatText(text)
+    expect(1, text, "string")
+    -- x, y
+    local x = self.gx + self.paddingL + 1
+    local y = self.gy  + self.paddingU + 1
+
+    if text == "" then
+        return text, x, y
     end
 
-    local st = style or self:getStyle()
-    local m = self.marginR + self.marginL
-    local l = #text - m
+    if self.textAlignW == "center" then
+        x = x + math.ceil((self.w - #text) / 2)
+        y = y + math.floor((self.h) / 2)
+    end
+
+    -- clip text
+    local p = self:toPaddedW(0)
+    local l = #text - p
     if self.clipText == true then
-        l = math.min(#text, self.w - m - 1)
+        l = math.min(#text, self:getPaddedW() - p - 1)
     end
     local s = self.offsetTextX + 1
-
-    local _x, _y = self:getTextPosition(text)
-    _x = _x + self.marginL
-
-    term.setCursorPos(_x, _y)
-    term.setTextColor(st.textColor)
-    term.setBackgroundColor(st.backgroundColor)
-
-    local x, y = term.getCursorPos()
     local t = text:sub(s, s + l)
-    for i = 1, #t do
-        term.write(t:sub(i, i))
-        x = x + 1
-        term.setCursorPos(x, y)
-    end
+    return t, x, y
+end
+
+function Control:drawText()
+    local text, x, y = self:formatText(self:getText())
+    engine.drawText(text, x, y, self:getStyle())
 end
 
 local function addChild(self, c)
     c.parent = self
-    c.gx = self.gx + c.x
-    c.gy = self.gy + c.y
+    --setGXY(c, self.gx + c.x, self.gy + c.y) -- THINK
+    --updateChildGlobalPosition(self, c)
+    self:childAdded(c)
+    c:queueRetransform()
     c:treeEntered()
 end
 
@@ -586,10 +636,9 @@ function Control:add(o)
 
     table.insert(self.children, o)
     addChild(self, o)
-    --o:resize()
-    self:expandChildren()
     self:childrenChanged()
     self:queueDraw()
+    return o
 end
 
 ---@return Control
@@ -601,16 +650,23 @@ end
 ---Removes the Control object 'o' from the parent, NOTE if you want to delete the object use queueFree instead
 ---@param o Control
 function Control:remove(o)
+    local idx = 0
     for i = 1, #self.children do
         if self.children[i] == o then
             table.remove(self.children, i)
+            idx = i
             break
         end
+    end
+
+    if idx == 0 then
+        return
     end
 
     o.parent = nil
     self:childrenChanged()
     self:queueDraw()
+    self:childRemoved(o)
 end
 
 function Control:freeChildren()
@@ -630,19 +686,18 @@ function Control:replaceChildren(children)
         addChild(self, c)
     end
     self:childrenChanged()
-    self:expandChildren()
     self:queueDraw()
 end
 
 ---@param button integer
----@param rx number
----@param ry number
 ---@param x number
 ---@param y number
-function Control:drag(button, x, y, rx, ry)
+---@param dx number
+---@param dy number
+function Control:drag(button, x, y, dx, dy)
     if not self.draggable then return end
-    self.gx = self.gx + rx
-    self.gy = self.gy + ry
+    self.x = self.x + dx
+    self.y = self.y + dy
 end
 
 function Control:toFront()
@@ -698,7 +753,6 @@ end
 
 function Control:grabCursor()
     engine.input.setCursorControl(self)
-    self:updateCursor()
 end
 
 function Control:releaseCursor()
@@ -722,6 +776,7 @@ function Control:pressed(button, x, y) end
 function Control:doublePressed(button, x, y) end
 function Control:scroll(dir, x, y) end
 function Control:focusChanged() end
+-- If the control has cursor control, see control:grabCursor(), this function will be responsible for drawing the cursor 
 function Control:updateCursor() end
 function Control:input(data) end
 
@@ -729,6 +784,13 @@ function Control:textChanged() end
 function Control:sizeChanged() end
 function Control:transformChanged() end
 function Control:visibilityChanged() end
+-- Function will be called before a container sorts this control
+function Control:containerPreSort() end
+
+---@param c Control
+function Control:childAdded(c) end
+---@param c Control
+function Control:childRemoved(c) end
 
 ---@param p Control
 ---@param c Control
@@ -760,7 +822,7 @@ end
 ---@param color number
 ---@return ColorPicker
 function Control:addColorPicker(text, color)
-    return addControl(self, engine.ColorPicker)
+    return addControl(self, engine.ColorPicker, text, color)
 end
 
 ---@return Container
@@ -779,9 +841,10 @@ function Control:addFlowContainer()
     return addControl(self, engine.FlowContainer)
 end
 
----@return HContainer
+---@return ArrayContainer
 function Control:addHContainer()
-    return addControl(self, engine.HContainer)
+    return addControl(self, engine.ArrayContainer, "horizontal")
+    --return addControl(self, engine.HContainer)
 end
 
 ---@return Icon
@@ -794,14 +857,22 @@ function Control:addLineEdit()
     return addControl(self, engine.LineEdit)
 end
 
+---@param alignmentMode string?
 ---@return ScrollContainer
-function Control:addScrollContainer()
-    return addControl(self, engine.ScrollContainer)
+function Control:addScrollContainer(alignmentMode)
+    return addControl(self, engine.ScrollContainer, alignmentMode)
 end
 
----@return VContainer
+---@param alignmentMode string
+---@return ArrayContainer
+function Control:addArrayContainer(alignmentMode)
+    return addControl(self, engine.ArrayContainer, alignmentMode)
+end
+
+---@return ArrayContainer
 function Control:addVContainer()
-    return addControl(self, engine.VContainer)
+    --return addControl(self, engine.VContainer)
+    return addControl(self, engine.ArrayContainer, "vertical")
 end
 
 ---@param text string?

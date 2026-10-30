@@ -1,10 +1,11 @@
+---@param button Button
+---@param engine Engine
 ---@return Dropdown
-return function(button, input, utils)
+return function(button, engine)
 ---@class Dropdown : Button
 local Dropdown = button:newClass()
 Dropdown.__type = "Dropdown"
 
-Dropdown._h = 1
 Dropdown.list = nil
 Dropdown.open = false
 Dropdown.dragSelectable = true
@@ -14,14 +15,9 @@ Dropdown.optionShadow = true
 function Dropdown:init(text)
     button.init(self, text)
     self.list = self:addVContainer()
-    self.list.minW = 0
-    self.list.minH = 0
-    self.list.fitToChildrenW = true
-    self.list.fitToChildrenH = true
-    self.list.render = function (o)
-        o:drawShadow()
-    end
-    self.list.rendering = true
+    --self.list.render = function (o)
+    --    o:drawShadow()
+    --end
     self.list.topLevel = true
     self.list.y = self.h
     self.list.visible = false
@@ -32,11 +28,11 @@ function Dropdown:init(text)
 
     self.list.rendering = true
 
-    input.addRawEventListener(self)
+    engine.input.addRawEventListener(self)
 end
 
 function Dropdown:queueFree()
-    input.removeRawEventListener(self)
+    engine.input.removeRawEventListener(self)
     button.queueFree(self)
 end
 
@@ -67,28 +63,23 @@ function Dropdown:focusChanged()
     end
 end
 
----@return Control
+---@return Button
 function Dropdown:addToList(text, clickable)
     if clickable == nil then
         clickable = true
     end
 
-    local b = nil
-    if clickable == true then
-        b = self.list:addButton()
-        b.optionSelectable = true
-    else
-        b = self.list:addControl()
-        b.optionSelectable = false
-    end
+    local b = self.list:addButton()
+    b.optionSelectable = clickable
+    b.disabled = clickable == false
     b.shadow = false
     b.text = text
     b.h = 1
     b.dragSelectable = true
     b.propogateFocusUp = true
-    b.marginL = 1
-    b.marginR = 1
-    b.expandW = true
+    b.paddingL = 1
+    b.paddingR = 1
+    b.fillW = true
     local down = b.down
     b.down = function(o)
         if self.shortcutSelection then
@@ -188,7 +179,7 @@ function Dropdown:next()
 
     if self.shortcutSelection ~= nil then
         self.shortcutSelection:up()
-        local idx = utils.find(self.list.children, self.shortcutSelection)
+        local idx = engine.utils.find(self.list.children, self.shortcutSelection)
 
         if idx == nil then
             self.shortcutSelection = self.list.children[1]
@@ -223,7 +214,7 @@ function Dropdown:previous()
 
     if self.shortcutSelection ~= nil then
         self.shortcutSelection:up()
-        local idx = utils.find(self.list.children, self.shortcutSelection)
+        local idx = engine.utils.find(self.list.children, self.shortcutSelection)
 
         if idx == nil then
             self.shortcutSelection = self.list.children[#self.list.children]
@@ -259,6 +250,7 @@ function Dropdown:release()
     self.shortcutSelection = nil
 end
 
+---@param i integer
 function Dropdown:optionPressed(i) end
 
 return Dropdown

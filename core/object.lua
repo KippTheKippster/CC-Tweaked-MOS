@@ -117,6 +117,7 @@ function Object:new(...)
 
     setmetatable(properties, pMt)
     mt.properties = properties
+    ---@type table<Signal, Connection[]>
     mt.connections = {}
 
     o:init(...)
@@ -124,7 +125,7 @@ function Object:new(...)
 end
 
 function Object:newClass()
-    local sMt = getmetatable(self) 
+    local sMt = getmetatable(self)
     if not sMt.class then
         error("Attempting to create class from instance!", 1)
     end
@@ -134,7 +135,6 @@ function Object:newClass()
     for k, v in pairs(sMt.properties) do
         properties[k] = v
     end
-    --rawset(o, "properties", properties)
     mt.properties = properties
     mt.class = true
     return o
@@ -170,9 +170,10 @@ end
 
 ---Defines a new get set property
 ---@param key string
----@param methods table
+---@param get function?
+---@param set function?
 ---@param redefine boolean?
-function Object:defineProperty(key, methods, redefine)
+function Object:defineProperty(key, get, set, redefine)
     if key == nil then
         error("Attemting to define property with key nil " .. tostring(self), 2)
     end
@@ -186,13 +187,16 @@ function Object:defineProperty(key, methods, redefine)
     end
 
 
-    properties[key] = methods
+    properties[key] = { get = get, set = set }
 end
 
+---@param name string?
 ---@return Signal
-function Object:createSignal()
+function Object:newSignal(name)
     ---@class Signal
-    local signal = {}
+    local signal = {
+        name = name or "unnamed_signal"
+    }
     return signal
 end
 
@@ -201,9 +205,8 @@ end
 ---@param ... any
 function Object:connectSignal(signal, method, ...)
     local mt = getmetatable(self)
-    if mt.connections[signal] == nil then
-        mt.connections[signal] = {}
-    end
+    mt.connections[signal] = mt.connections[signal] or {}
+    ---@class Connection
     local connection = {
         method = method,
         binds = table.pack(...)
