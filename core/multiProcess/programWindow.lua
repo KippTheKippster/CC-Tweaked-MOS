@@ -329,7 +329,6 @@ function ProgramWindow:addViewport(pv)
 end
 
 function ProgramWindow:close()
-    windowControl.close(self)
     if not self.programViewport.program.dead then
         self.programViewport:endProcess()
     end

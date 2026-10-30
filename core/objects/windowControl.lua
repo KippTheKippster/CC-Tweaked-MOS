@@ -16,6 +16,7 @@ WindowControl._minH = 4
 WindowControl.oldW = 10
 WindowControl.oldH = 4
 WindowControl._fullscreen = false
+WindowControl._closing = false
 
 ---@type boolean
 WindowControl.fullscreen = nil
@@ -131,6 +132,11 @@ function WindowControl:getText()
 end
 
 function WindowControl:close()
+    if self._closing then
+        return
+    end
+
+    self._closing = true
     self:closed()
     self:emitSignal(self.closedSignal)
     self:queueFree()
