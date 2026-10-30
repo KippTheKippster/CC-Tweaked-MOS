@@ -14,7 +14,10 @@ if fs.exists(dest) then
     end
 end
 
-local logFile = fs.open(fs.combine(dest, tostring(os.epoch("utc")) .. ".log"), "w")
+local logFile, err = fs.open(fs.combine(dest, tostring(os.epoch("utc")) .. ".log"), "w")
+if err then
+    error(("Failed to open log file '%s'"):format(err))
+end
 function mos.log(...)
     local line = ""
     local data = table.pack(...)
@@ -27,9 +30,17 @@ function mos.log(...)
     logFile.flush()
 end
 
+function mos.logf(s, ...)
+    mos.log(string.format(s, ...))
+end
+
 mos.latestMosOption = ""
 
-local mosPath = "/" .. fs.getDir(fs.getDir(debug.getinfo(1, "S").source:sub(2)))
+local src = fs.getDir(fs.getDir(debug.getinfo(1, "S").source:sub(2)))
+if not src:find("/") then
+    src = "mos"
+end
+local mosPath = "/" .. src
 local mosDotPath = mosPath:gsub("/", ".")
 local corePath = mosPath .. "/core"
 local coreDotPath = mosDotPath .. ".core"
@@ -73,7 +84,7 @@ local function loadAPI(path, extraEnv)
     setmetatable(env, { __index = _G })
     local fn, err = loadfile(path, nil, env)
     if not fn then
-        error(err, 2)
+        error(("%s '%s'"):format(err, path), 2)
     end
 
     return fn()
@@ -81,19 +92,23 @@ end
 
 ---@type MultiProgram
 
-local mp = loadAPI(fs.combine(corePath, "multiProcess/multiProgram.lua"), { mos = mos })
+---@type MultiProgram
+local mp = loadAPI(fs.combine(corePath, "multiProcess/multiProgram.lua"), {mos = mos})
 
 ---@type Engine
-local engine = loadAPI(fs.combine(corePath, "engine.lua"), { mos = mos })
+local engine = loadAPI(fs.combine(corePath, "engine.lua"), {mos = mos})--require(coreDotPath .. ".engine") --mp.loadProgram(engineEnv, toCorePath("/engine.lua"))()--
+---@type ProgramWindow[]
 local windows = {}
-local customTools = {}
-local currentWindow = nil
+---@type table<ProgramWindow, function>
+local windowTools = {}
+---@type table<ProgramWindow, function>
+local windowAudio = {}local currentWindow = nil
 
 local favorites = {}
 ---@type QuickSearch
 local quickSearch = nil
 
-local windowStartX = 1
+local windowStartX = 2
 local windowStartY = 2
 
 --MOS
@@ -205,8 +220,8 @@ function mos.loadTheme(file)
 end
 
 local dropdown = engine.Dropdown
-local programViewport = loadAPI(corePath .. "/multiProcess/programViewport.lua", {mos=mos})(engine.Control, mp, engine)
-local programWindow = loadAPI(corePath .. "/multiProcess/programWindow.lua", {mos=mos})(engine.WindowControl, engine)
+local programViewport = loadAPI(fs.combine(corePath, "multiProcess/programViewport.lua"), {mos=mos})(engine.Control, mp, engine)
+local programWindow = loadAPI(fs.combine(corePath, "multiProcess/programWindow.lua"), {mos=mos})(engine.WindowControl, engine)
 
 function mos.refreshTheme()
     local palette = mos.theme.palette
@@ -346,6 +361,8 @@ do
     def("theme", "os/themes/default.thm")
     def("background_image", nil, nil, "string")
     def("background_color", nil, nil, "number")
+    def("window_borders", true)
+    def("window_shadows", true)
     def("files.show_dot", true)
     def("files.show_mos", true)
     def("files.show_rom", true)
@@ -356,6 +373,7 @@ do
     appendToMap(fa, { ".txt", ".md", ".log", ".usr", ".json", ".settings", ".favorites", ".cfg" },
         { program = "/rom/programs/edit.lua" })
     fa[".nfp"] = { program = "os/programs/paint.lua" }
+    fa[".dfpwm"] = { program = "os/programs/music.lua" }
     def("file_association", fa)
 end
 
@@ -406,13 +424,13 @@ function mos.setBackground(image)
 end
 
 local focusContainer = engine.root:addControl()
-focusContainer.mouseIgnore = true
+focusContainer.mouseFilter = "ignore"
 focusContainer.rendering = false
 focusContainer.fillW = true
 focusContainer.fillH = true
 
 local windowContainer = focusContainer:addControl()
-windowContainer.mouseIgnore = true
+windowContainer.mouseFilter = "ignore"
 windowContainer.rendering = false
 windowContainer.fillW = true
 windowContainer.fillH = true
@@ -421,25 +439,23 @@ windowContainer.fillH = true
 local topBar = focusContainer:addHContainer()
 topBar.__name = "mos_top_bar"
 topBar.rendering = true
-topBar.mouseIgnore = true
+topBar.mouseFilter = "ignore"
 topBar.fillW = true
 
-
+--Scroll Bar
 local topScroll = topBar:addScrollContainer("horizontal")
 topScroll.fillW = true
 topScroll.alignmentMode = "horizontal"
 topScroll.__name = "mos_top_scroll"
 topScroll.rendering = false
-topScroll.mouseIgnore = true
+topScroll.mouseFilter = "ignore"
 
 --Tool Bar
-
-
 local toolBar = topScroll:addHContainer()
 toolBar.__name = "mos_tool_bar"
 toolBar.h = 1
 toolBar.separation = 1
-toolBar.mouseIgnore = true
+toolBar.mouseFilter = "ignore"
 toolBar.inheritStyle = true
 toolBar.rendering = false
 
@@ -498,7 +514,7 @@ function mos.refreshMosDropdown()
             x.anchorW = "right"
             x.x = 1
             x.dragSelectable = true
-            x.propogateFocusUp = true
+            x.propagateFocusUp = true
             x.pressed = function()
                 mos.removeFileFavorite(k)
                 mos.refreshMosDropdown()
@@ -557,8 +573,8 @@ local function windowClosed(w, b)
         setFullscreenMode(false)
     end
     windowDropdown:removeFromList(b)
-    if customTools[w] ~= nil then
-        customTools[w](false)
+    if windowTools[w] then
+        windowTools[w](false)
     end
 
     table.remove(windows, engine.utils.find(windows, w))
@@ -578,8 +594,8 @@ end
 
 local function windowVisibilityChanged(w)
     if currentWindow == w then
-        if customTools[w] ~= nil then
-            customTools[w](w.visible)
+        if windowTools[w] ~= nil then
+            windowTools[w](w.visible)
         end
     end
 end
@@ -593,11 +609,11 @@ local function windowFocusChanged(window)
     end
 
     if currentWindow ~= window then
-        if customTools[currentWindow] ~= nil then
-            customTools[currentWindow](false)
+        if windowTools[currentWindow] ~= nil then
+            windowTools[currentWindow](false)
         end
-        if customTools[window] ~= nil then
-            customTools[window](true)
+        if windowTools[window] ~= nil then
+            windowTools[window](true)
         end
     end
 
@@ -627,7 +643,7 @@ local function addWindow(w)
     x.marginL = 1
     x.anchorW = "right"
     x.dragSelectable = true
-    x.propogateFocusUp = true
+    x.propagateFocusUp = true
     x.pressed = function()
         w:close()
     end
@@ -657,6 +673,8 @@ end
 function mos.launchProgram(name, path, x, y, w, h, ...)
     ---@type ProgramWindow
     local window = programWindow:new()
+    window.borders = settings.get("mos.window_borders", true)
+    window.shadow = settings.get("mos.window_shadows", true)
     windowContainer:add(window)
 
     ---@type ProgramViewport
@@ -675,7 +693,16 @@ function mos.launchProgram(name, path, x, y, w, h, ...)
 
     local extraEnv = {}
 
-    extraEnv.mos = mos
+    local mt = {
+        __index = mos,
+        __newindex = function ()
+            error("Attempt to assign value to mos (read-only)", 2)
+        end
+    }
+    local mosEnv = {}
+    setmetatable(mosEnv, mt)
+
+    extraEnv.mos = mosEnv
     extraEnv.mosWindow = window
 
     viewport:launchProgram(engine.screenBuffer, path, extraEnv, ...)
@@ -696,7 +723,7 @@ local function nextWindowTransform()
     windowStartX = windowStartX + 1
     windowStartY = windowStartY + 1
     if x + w > screenW - 2 then
-        windowStartX = 1
+        windowStartX = 2
     end
 
     if y + h > screenH - 2 then
@@ -709,9 +736,9 @@ end
 ---comment
 ---@return string
 function mos.getInputFileOpenModifier()
-    if engine.input.isKey(keys.leftCtrl) then
+    if engine.input.isKeyHeld(keys.leftCtrl) then
         return "edit"
-    elseif engine.input.isKey(keys.leftShift) then
+    elseif engine.input.isKeyHeld(keys.leftShift) then
         return "args"
     else
         return "none"
@@ -859,11 +886,94 @@ function windowDropdown:optionPressed(i)
     end
 end
 
-function mos.bindTool(window, callbackFunction)
-    customTools[window] = callbackFunction
+---@param window ProgramWindow
+---@param callback function
+function mos.bindWindowTool(window, callback)
+    if window.__type ~= "ProgramWindow" then
+        error("invalid window", 2)
+    end
+    windowTools[window] = callback
 end
 
+-- Audio
+---@param window ProgramWindow
+---@param callback function
+function mos.bindWindowAudio(window, callback)
+    if window.__type ~= "ProgramWindow" then
+        error("invalid window", 2)
+    end
+    mos.addAudioCallback(callback)
+    windowAudio[window] = callback
+end
 
+function mos.playAudioFile(path, volume)
+    local p = nil
+    p = mp.launchProcess(engine.screenBuffer, function ()
+        local dfpwm = require "cc.audio.dfpwm"
+        local speaker =  peripheral.find("speaker")
+
+        local decoder = dfpwm.make_decoder()
+        for input in io.lines(path, 16 * 1024) do
+            local decoded = decoder(input)
+            while not speaker.playAudio(decoded) do
+                os.pullEvent("speaker_audio_empty")
+            end
+        end
+        if not p.dead then
+            mp.endProcess(p)
+        end
+    end, nil, 0, 0, 0, 0)
+
+    return function ()
+        if not p.dead then
+            mp.endProcess(p)
+        end
+    end
+end
+
+---@type function[]
+local audioCallbacks = {}
+
+local function findSpeaker()
+    local speaker = peripheral.find("speaker")
+    if speaker then
+        return speaker, peripheral.getName(speaker)
+    else
+        return nil, ""
+    end
+end
+
+local function initSpeaker(speaker)
+    if speaker then
+        speaker.playAudio({0})
+    end
+end
+
+local speaker, speakerSide = findSpeaker()
+initSpeaker(speaker)
+local bufferSize = 4096
+local samplesLeft = {}
+for i = 1, bufferSize do
+    samplesLeft[i] = 0
+end
+
+function mos.addSamples(sLeft, sRight)
+    for i = 1, math.min(#sLeft, bufferSize) do
+        samplesLeft[i] = math.max(math.min(samplesLeft[i] + sLeft[i], 127), -128)
+    end
+end
+
+---Note: Use mos.bindWindowAudio instead
+---@param callback function
+function mos.addAudioCallback(callback)
+    table.insert(audioCallbacks, callback)
+end
+
+---Note: Use mos.bindWindowAudio instead
+---@param callback function
+function mos.removeAudioCallback(callback)
+    table.remove(audioCallbacks, engine.utils.find(audioCallbacks, callback))
+end
 
 local clock_timer_id
 
@@ -880,21 +990,49 @@ local function rawEvent(data)
         updateTime()
     end
 
-    if event == "key" then
+    if event == "peripheral" then
+        if not speaker then
+            local p = peripheral.wrap(data[2])
+            if peripheral.hasType(p, "speaker") then
+                speaker = p
+                speakerSide = data[2]
+                initSpeaker(speaker)
+            end
+        end
+    elseif event == "peripheral_detach" then
+        if speakerSide == data[2] then
+            speaker, speakerSide = findSpeaker()
+            initSpeaker(speaker)
+        end
+    elseif event == "speaker_audio_empty" then
+        if not speaker or data[2] ~= speakerSide then
+            return
+        end
+        local res = speaker.playAudio(samplesLeft)
+        for i = 1, bufferSize do
+            samplesLeft[i] = 0
+        end
+        for _, callback in ipairs(audioCallbacks) do
+            local ok, err = pcall(callback)
+            if not ok then
+                mos.log(("Audio Callback error '%s'"):format(err))
+            end
+        end
+    elseif event == "key" then
         if data[2] == keys.t then
-            if engine.input.isKey(keys.leftCtrl) then
+            if engine.input.isKeyHeld(keys.leftCtrl) then
                 ---@type ProgramWindow
-                local focus = engine.input.getFocus()
+                local focus = engine.input.getFocusControl()
                 if engine.utils.contains(windows, focus) then
                     focus:close()
                 end
             end
         elseif data[2] == keys.f4 then
             if currentWindow ~= nil then
-                currentWindow:setFullscreen(currentWindow.fullscreen == false)
+                currentWindow.fullscreen = currentWindow.fullscreen == false
             end
         elseif data[2] == keys.s then
-            if engine.input.isKey(keys.leftAlt) then
+            if engine.input.isKeyHeld(keys.leftAlt) then
                 if quickSearch:isOpen() then
                     quickSearch:close()
                 else
@@ -908,7 +1046,7 @@ local function rawEvent(data)
             quickSearch:previous()
         elseif data[2] == keys.down then
             quickSearch:next()
-        elseif engine.input.isKey(keys.leftAlt) then
+        elseif engine.input.isKeyHeld(keys.leftAlt) then
             for i = 1, #toolBar.children do
                 if data[2] == keys.one + (i - 1) then
                     if toolBar.children[i].next then
@@ -923,6 +1061,18 @@ local function rawEvent(data)
                 if toolBar.children[i] and toolBar.children[i].release then
                     toolBar.children[i]:release()
                 end
+            end
+        end
+    elseif event == "setting_changed" then
+        local setting = data[2]
+        local value = data[3]
+        if setting == "mos.window_borders" then
+            for _, w in ipairs(windows) do
+                w.borders = value
+            end
+        elseif setting == "mos.window_shadows" then
+            for _, w in ipairs(windows) do
+                w.shadow = value
             end
         end
     end

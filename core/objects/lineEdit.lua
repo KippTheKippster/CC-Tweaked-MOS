@@ -116,7 +116,7 @@ function LineEdit:input(data)
         self.cursorX = self.cursorX + #data[2]
     elseif event == "key" then
         local k = data[2]
-        local ctrl = engine.input.isKey(keys.leftCtrl)
+        local ctrl = engine.input.isKeyHeld(keys.leftCtrl)
         if k == keys.backspace then
             if ctrl then
                 local i = findPrevWord(self.text, self.cursorX)
@@ -147,7 +147,7 @@ function LineEdit:input(data)
     end
 end
 
-function LineEdit:down(b, x, y)
+function LineEdit:click(b, x, y)
     self.cursorX = x - 1 + self.offsetTextX
 end
 

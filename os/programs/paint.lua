@@ -1,3 +1,4 @@
+---*paint,ui*---
 if mos == nil then
     printError("Paint must be opened with MOS!")
     return
@@ -423,7 +424,7 @@ selectionBox.text = ""
 selectionBox.w = 0
 selectionBox.h = 0
 selectionBox.visible = false
-selectionBox.mouseIgnore = true
+selectionBox.mouseFilter = "ignore"
 selectionBox.dragging = false
 selectionBox.style = selectionBox.style:unique()
 selectionBox.style.border = true
@@ -444,11 +445,11 @@ function sprite:rawEvent(data)
     local event = data[1]
     if event == "term_resize" then
         paint.centerSprite()
-    elseif event == "key" and not engine.input.isInputGrabbed() then
+    elseif event == "key" and not engine.input.getInputControl() then
         local key = data[2]
-        if engine.input.isKey(keys.leftCtrl) then
+        if engine.input.isKeyHeld(keys.leftCtrl) then
             if key == keys.s then
-                if engine.input.isKey(keys.leftShift) then
+                if engine.input.isKeyHeld(keys.leftShift) then
                     ui.saveAs()
                 else
                     ui.save()
@@ -480,7 +481,7 @@ function sprite:rawEvent(data)
                 end
             end
         end
-    elseif event == "paste" and not engine.input.isInputGrabbed() then
+    elseif event == "paste" and not engine.input.getInputControl() then
         if paint.copyCanvas == nil then
             return
         end
@@ -495,7 +496,7 @@ function sprite:rawEvent(data)
         selectionBox.w = w
         selectionBox.h = h
         selectionBox.visible = true
-        selectionBox.mouseIgnore = false
+        selectionBox.mouseFilter = "stop"
 
         paint.selectionCanvas = paint.copyCanvas
     end
@@ -551,7 +552,7 @@ function sprite:setPixel(b, x, y)
     end
 end
 
-function sprite:down(b, x, y)
+function sprite:click(b, x, y)
     if paint.tool == "pen" then
         sprite:setPixel(b, x, y)
     elseif paint.tool == "selection" then
@@ -564,7 +565,7 @@ function sprite:down(b, x, y)
         selectionBox.y = y - 1
         selectionBox.w = 1
         selectionBox.h = 1
-        selectionBox.mouseIgnore = true
+        selectionBox.mouseFilter = "ignore"
         selectionBox.visible = true
     elseif paint.tool == "bucket" then
         local dirs = {
@@ -603,7 +604,7 @@ function sprite:down(b, x, y)
     end
 end
 
-function sprite:drag(b, x, y, rx, ry)
+function sprite:drag(b, x, y, dx, dy)
     if x < 1 or y < 1 or x > self.w or y > self.h then return end
     if paint.tool == "pen" then
         sprite:setPixel(b, x, y)
@@ -618,7 +619,7 @@ function sprite:up()
         if selectionBox.w == 1 and selectionBox.h == 1 then
             selectionBox.visible = false
         else
-            selectionBox.mouseIgnore = false
+            selectionBox.mouseFilter = "stop"
             if selectionBox.w < 1 then -- Ensure that size isn't negative
                 local x = selectionBox.x
                 local w = selectionBox.w
@@ -628,7 +629,7 @@ function sprite:up()
             if selectionBox.h < 1 then
                 local y = selectionBox.y
                 local h = selectionBox.h
-                selectionBox.oy = y + h - 1
+                selectionBox.y = y + h - 1
                 selectionBox.h = h * -1 + 2
             end
 
@@ -639,9 +640,9 @@ function sprite:up()
     end
 end
 
-function selectionBox:drag(b, x, y, rx, ry)
-    self.x = self.x + rx
-    self.y = self.y + ry
+function selectionBox:drag(b, x, y, dx, dy)
+    self.x = self.x + dx
+    self.y = self.y + dy
 end
 
 function selectionBox:render()
@@ -751,7 +752,7 @@ for i = 0, 16 do
         c.style.backgroundColor = 2 ^ i
         c.colorIndex = c.style.backgroundColor
     end
-    c.down = function(_, b)
+    c.click = function(_, b)
         if b == 1 then
             paint.colorL = c.colorIndex
             colorL.style = c.style
@@ -809,6 +810,7 @@ end
 local function createDialogue()
     local wi = engine.root:addWindowControl()
     wi.style = windowStyle
+    wi.styleFocus = windowStyle
     wi.x = 1
     wi.y = 1
     return wi
@@ -823,7 +825,7 @@ local function createResizeDialogue(fn)
     wi.vContainer = wi:addVContainer()
     wi.vContainer.fillW = true
     wi.vContainer.fillH = true
-    wi.vContainer.oy = 1
+    wi.vContainer.y = 1
     wi.wEdit = createEditField("W: ", tostring(_w), wi.vContainer)
     wi.hEdit = createEditField("H: ", tostring(_h), wi.vContainer)
     wi.ok = wi:addButton()
@@ -907,7 +909,7 @@ if mos then
         mosWindow:grabFocus()
     end
 
-    mos.bindTool(mosWindow, function(focus)
+    mos.bindWindowTool(mosWindow, function(focus)
         if focus then
             mos.addToToolbar(fileDropdown)
             mos.addToToolbar(imageDropdown)

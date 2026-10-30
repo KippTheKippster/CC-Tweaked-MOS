@@ -1,3 +1,5 @@
+local expect = require"cc.expect"
+
 local function contains(t, v)
     for _, x in ipairs(t) do
         if v == x then
@@ -62,9 +64,8 @@ local function pushBottom(table, object)
 end
 
 local function saveTable(file, tbl, compact, allowRepetitions)
-    if type(file) == "table" then
-        error("WHAT",2)
-    end
+    expect(1, file, "string")
+    expect(2, tbl, "table")
     compact = compact or false
     allowRepetitions = allowRepetitions or true
     local f = fs.open(file, "w")
@@ -83,6 +84,16 @@ local function loadTable(file)
     return textutils.unserialize(data)
 end
 
+local fromBlit = colors.fromBlit or function (hex)
+    expect(1, hex, "string")
+
+    if #hex ~= 1 then return nil end
+    local value = tonumber(hex, 16)
+    if not value then return nil end
+
+    return 2 ^ value
+end
+
 ---comment
 ---@param w table
 ---@return table?
@@ -98,15 +109,41 @@ local function getWindowChar(w, x, y)
         local textColorChar = textColor:sub(x,x)
         local backgroundColorChar = backgroundColor:sub(x,x)
 
-        local char = { text = textChar, textColor = colors.black, backgroundColor = colors.fromBlit(backgroundColorChar) }
+        local char = { text = textChar, textColor = colors.black, backgroundColor = fromBlit(backgroundColorChar) }
         if textChar ~= " " then
-            char.textColor = colors.fromBlit(textColorChar)
+            char.textColor = fromBlit(textColorChar)
         end
 
         return char
     end
 
     return nil
+end
+
+local function inArea(x, y, x1, y1, w, h)
+    if (
+        x <= x1 + w and
+        x >= x1 and
+        y <= y1 + h and
+        y >= y1
+    ) then
+        return true
+    else
+        return false
+    end
+end
+
+local function overlappingArea(x, y, w, h, x1, y1, w1, h1)
+    if (
+        x <= x1 + w1 and
+        x + w >= x1 and
+        y <= y1 + h1 and
+        y + h >= y1
+    ) then
+        return true
+    else
+        return false
+    end
 end
 
 ---@class Utils
@@ -121,6 +158,8 @@ local Utils = {
 	saveTable = saveTable,
 	loadTable = loadTable,
     getWindowChar = getWindowChar,
+    inArea = inArea,
+    overlappingArea = overlappingArea
 }
 
 

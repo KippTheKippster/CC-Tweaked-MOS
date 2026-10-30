@@ -1,7 +1,9 @@
 local expect = require "cc.expect".expect
 
-local src = debug.getinfo(1, "S").source:sub(2)
-local corePath = fs.getDir(src)
+local src = fs.getDir(debug.getinfo(1, "S").source:sub(2))
+if not src:find("/") then if mos then src = mos.toCorePath("") else src = "mos/core" end end
+
+local corePath = src
 local coreDotPath = "." .. corePath:gsub("/", ".")
 
 ---@class Engine
@@ -19,25 +21,22 @@ engine.screenBuffer = screenBuffer
 
 ---@type Object
 local object = require(coreDotPath .. ".object")
----@type Collision
-local collision = require(coreDotPath .. ".collision")
----@type Input
-local input = require(coreDotPath .. ".input")(engine, collision)
 ---@type Utils
 local utils = require(coreDotPath .. ".utils")
-
+---@type Input
+local input = require(coreDotPath .. ".input")(engine, utils)
 
 ---@type Input
 engine.input = input
 ---@type Utils
 engine.utils = utils
-engine.collision = collision
-
 ---@type Control[]
 local freeQueue = {}
 
 ---@type table[]
 local deferredCalls = {}
+
+local topLevelList = {}
 
 ---@type Style
 local style = require(coreDotPath .. ".style")
@@ -123,7 +122,7 @@ root.rendering = false
 root.__name = "root"
 root.w = initialW
 root.h = initialH
-root.mouseIgnore = true
+root.mouseFilter = "ignore"
 
 local running = false
 engine.background = true
@@ -170,7 +169,7 @@ end
 local function drawTree(o, topLevelList)
     if o.visible == false then return end
     if o.topLevel and topLevelList then
-        table.insert(topLevelList, o) -- TODO make list persistent
+        table.insert(topLevelList, o)
     else
         o:draw()
         local c = o.children
@@ -189,7 +188,7 @@ local function redrawScreen()
         term.clear()
     end
 
-    local topLevelList = {}
+    topLevelList = {}
     drawTree(engine.root, topLevelList)
     for i, control in ipairs(topLevelList) do
         drawTree(control, nil)
@@ -258,8 +257,8 @@ end
 local fnInput = function()
     while running do
         term.redirect(parentTerm)
-        local event = input.processInput()
-        if event == "term_resize" then
+        local data = input.pullEvent()
+        if data[1] == "term_resize" then
             resizeBuffer(parentTerm.getSize())
         end
     end
@@ -306,6 +305,10 @@ end
 
 function engine.stop()
     running = false
+end
+
+function engine.getTopLevelControls()
+    return topLevelList
 end
 
 ---@param mp MultiProgram

@@ -12,17 +12,18 @@ mos.log("MOS Error Popup: ", textutils.serialize(args))
 ---@type Engine
 mos.applyTheme(engine)
 local main = engine.root:addVContainer()
+main.paddingL = 1
+main.paddingR = 1
 
 for _, err in ipairs(args) do
     local c = main:addControl()
     c.text = tostring(err):match"^%s*(.-)%s*$"
-    c.marginL = 1
-    c.marginR = 1
 end
 
+main:updateTree()
 
-mosWindow.minW = main.w
-mosWindow.minH = main.h + 1
+mosWindow.minW = main:getPaddedW()
+mosWindow.minH = main:getPaddedH()
 mosWindow.w = mosWindow.minW
 mosWindow.h = mosWindow.minH
 mosWindow.oldW = mosWindow.w

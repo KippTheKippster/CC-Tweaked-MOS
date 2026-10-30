@@ -4,7 +4,6 @@ return function(control)
 local Container = control:newClass()
 Container.__type = "Container"
 
-Container.mouseIgnore = false
 Container.rendering = false
 Container._fitToText = false
 Container._sortQueued = false

@@ -98,7 +98,6 @@ return function(container, engine, style, styleDown)
         return o
     end
 
-
     ScrollContainer:defineProperty("scrollValue",
         function (self)
             return self._scrollValue
@@ -266,7 +265,7 @@ return function(container, engine, style, styleDown)
         if event == "mouse_click" then
             local x = data[3]
             local y = data[4]
-            if engine.collision.inArea(x, y, self._barStartX, self._barStartY, self._barEndX - self._barStartX, self._barEndY - self._barStartY) then
+            if engine.utils.inArea(x, y, self._barStartX, self._barStartY, self._barEndX - self._barStartX, self._barEndY - self._barStartY) then
                 self.barDown = true
                 self:queueDraw()
                 self._mOffset = self._barStartY - y - 1

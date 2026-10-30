@@ -83,16 +83,19 @@ Control._textAlignW = "left"
 ---@type string
 Control.textAlignW = nil
 Control.focus = false
-Control.propogateFocusUp = false
+Control.propagateFocusUp = false
 Control.clipText = true
-Control.mouseIgnore = false
+--- Determines how mouse input interacts with the control
+--- stop   - input will be received (default)
+--- pass   - input will be received and passed to the parent control
+--- ignore - input will be ignored  and passed to the parent control
+Control.mouseFilter = "stop"
 Control.rendering = true
-Control.draggable = false
 Control.dragSelectable = false
 Control.topLevel = false
 ---@type Control[]
 Control.children = {}
----@type Control
+---@type Control?
 Control.parent = nil
 
 Control._marginL = 0
@@ -370,13 +373,13 @@ function Control:reposition()
     end
 
     if c.anchorW == "right" then
-        x = x + pw - c:getPaddedW()
+        x = x + pw - c:getPaddedW() - self.marginR
     elseif c.anchorW == "center" then
         x = x + math.floor(pw / 2 + 0.5) - math.floor(c:getPaddedW() / 2 + 0.5)
     end
 
     if c.anchorH == "down" then
-        y = y + ph - c:getPaddedH()
+        y = y + ph - c:getPaddedH() - self.marginU
     elseif c.anchorH == "center" then
         y = y + math.floor(ph / 2 + 0.5) - math.floor(c:getPaddedH() / 2 + 0.5)
     end
@@ -577,7 +580,7 @@ end
 
 function Control:drawShadow()
     if self.shadow then
-        engine.drawShadow(self.gx, self.gy, self.w, self.h, self:getStyle())
+        engine.drawShadow(self.gx, self.gy, self:getPaddedW(), self:getPaddedH(), self:getStyle())
     end
 end
 
@@ -631,7 +634,7 @@ end
 ---@param o Control
 function Control:add(o)
     if o.parent then
-        error("Attempting to add a child that already has a parent! __name: " .. o.__name, 2)
+        error("Attempt to add a child that already has a parent! __name: " .. o.__name, 2)
     end
 
     table.insert(self.children, o)
@@ -689,17 +692,6 @@ function Control:replaceChildren(children)
     self:queueDraw()
 end
 
----@param button integer
----@param x number
----@param y number
----@param dx number
----@param dy number
-function Control:drag(button, x, y, dx, dy)
-    if not self.draggable then return end
-    self.x = self.x + dx
-    self.y = self.y + dy
-end
-
 function Control:toFront()
     if self.parent.children[#self.parent.children] == self then return end
     engine.utils.pushBottom(self.parent.children, self)
@@ -744,11 +736,13 @@ function Control:isOnScreen()
 end
 
 function Control:grabFocus()
-    engine.input.grabControlFocus(self)
+    engine.input.setFocusControl(engine.input.getFocusOwner(self))
 end
 
 function Control:releaseFocus()
-    engine.input.releaseControlFocus(self)
+    if engine.input.getFocusControl() == engine.input.getFocusOwner(self) then
+        engine.input.setFocusControl(nil)
+    end
 end
 
 function Control:grabCursor()
@@ -756,7 +750,9 @@ function Control:grabCursor()
 end
 
 function Control:releaseCursor()
-    engine.input.setCursorControl(nil)
+    if engine.input.getCursorControl() == self then
+        engine.input.setCursorControl(nil)
+    end
 end
 
 function Control:grabInput()
@@ -764,17 +760,46 @@ function Control:grabInput()
 end
 
 function Control:releaseInput()
-    engine.input.setInputControl(nil)
+    if engine.input.getInputControl() == self then
+        engine.input.setInputControl(nil)
+    end
+end
+
+function Control:grabDown()
+    engine.input.setDownControl(self)
+end
+
+function Control:releaseDown()
+    if engine.input.getDownControl() == self then
+        engine.input.setDownControl(nil)
+    end
 end
 
 --Event Functions that can be overwritten
 function Control:treeEntered() end
 function Control:childrenChanged() end
-function Control:down(button, x, y) end
-function Control:up(button, x, y) end
-function Control:pressed(button, x, y) end
-function Control:doublePressed(button, x, y) end
+function Control:down() end
+function Control:up() end
+function Control:pressed() end
+---@param button integer
+---@param x number
+---@param y number
+function Control:click(button, x, y) end
+---@param button integer
+---@param x number
+---@param y number
+function Control:doubleClick(button, x, y) end
+---@param button integer
+---@param x number
+---@param y number
+---@param dx number
+---@param dy number
+function Control:drag(button, x, y, dx, dy) end
+---@param dir integer
+---@param x number
+---@param y number
 function Control:scroll(dir, x, y) end
+
 function Control:focusChanged() end
 -- If the control has cursor control, see control:grabCursor(), this function will be responsible for drawing the cursor 
 function Control:updateCursor() end
@@ -813,7 +838,8 @@ function Control:addButton(text)
 end
 
 ---@param text string?
----@return Button
+---@param checked boolean?
+---@return Checkbox
 function Control:addCheckbox(text, checked)
     return addControl(self, engine.Checkbox, text, checked)
 end

@@ -1,3 +1,4 @@
+---*se*---
 ---@type MOS
 if mos == nil then
     printError("Settings must be opened with MOS!")
@@ -167,6 +168,20 @@ local bBackgroundColor = engine.ColorPicker:new("[      ]", settings.get("mos.ba
 local sBackgroundColor = addSetting("mos.background_color", "Background Color", bBackgroundColor)
 bBackgroundColor.colorPressed = function (_, color)
     sBackgroundColor.set(color)
+end
+
+local bWindowShadows = engine.Checkbox:new(nil, settings.get("mos.window_shadows"))
+local sWindowShadows = addSetting("mos.window_shadows", "Window Shadows", bWindowShadows, false)
+bWindowShadows.pressed = function (self)
+    engine.Checkbox.pressed(self)
+    sWindowShadows.set(settings.get("mos.window_shadows") == false)
+end
+
+local bWindowBorders = engine.Checkbox:new(nil, settings.get("mos.window_borders"))
+local sWindowBorders = addSetting("mos.window_borders", "Window Borders", bWindowBorders, false)
+bWindowBorders.pressed = function (self)
+    engine.Checkbox.pressed(self)
+    sWindowBorders.set(settings.get("mos.window_borders") == false)
 end
 
 addSeperator("-File Explorer-")

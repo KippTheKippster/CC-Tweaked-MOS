@@ -21,12 +21,12 @@ function Button:getStyle()
     end
 end
 
-function Button:down(b, x, y)
+function Button:down()
     self.isClicked = true
     self:queueDraw()
 end
 
-function Button:up(b, x, y)
+function Button:up()
     self.isClicked = false
     self:queueDraw()
 end

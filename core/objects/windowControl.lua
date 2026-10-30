@@ -1,12 +1,13 @@
 ---@param control Control
 ---@param style Style
+---@param styleDown Style
 ---@return WindowControl
 return function(control, style, styleFocus, styleDown)
 ---@class WindowControl : Control
 local WindowControl = control:newClass()
 WindowControl.__type = "WindowControl"
 
-WindowControl.draggable = true
+WindowControl.clipText = true
 WindowControl.exitButton = nil
 WindowControl.scaleButton = nil
 WindowControl.minimizeButton = nil
@@ -34,18 +35,19 @@ WindowControl:defineProperty('fullscreen',
             wi.y = 0
             wi.oldW = wi.w
             wi.oldH = wi.h
+            local w, h = term.getSize()
             wi.fillW = true
             wi.fillH = true
             wi:toFront()
             wi:grabFocus()
-            wi:emitSignal(wi.fullscreenChangedSignal)
         else
             wi.fillW = false
             wi.fillH = false
             wi.w = wi.oldW
             wi.h = wi.oldH
-            wi:emitSignal(wi.fullscreenChangedSignal)
         end
+        wi:emitSignal(wi.fullscreenChangedSignal)
+        wi:fullscreenChanged()
     end
 )
 
@@ -78,7 +80,8 @@ function WindowControl:init(text)
     exit.w = 1
     exit.h = 1
     exit.dragSelectable = true
-    exit.propogateFocusUp = true
+    exit.propagateFocusUp = true
+    exit.anchorW = "right"
     exit.pressed = function(o)
         self:close()
     end
@@ -88,7 +91,7 @@ function WindowControl:init(text)
     scale.inheritStyle = true
     scale.w = 1
     scale.h = 1
-    scale.propogateFocusUp = true
+    scale.propagateFocusUp = true
 
     scale.drag = function(o, b, x, y, dx, dy)
         local w = self.w
@@ -107,17 +110,17 @@ function WindowControl:init(text)
         self.oldH = self.h
     end
 
-    scale.doublePressed = function(o)
+    scale.doubleClick = function(o)
         o.parent.fullscreen = true
     end
 
     local min = addButton(self, "-")
     self.minimizeButton = min
     min.inheritStyle = true
-    min.w = 1
-    min.h = 1
-    min.propogateFocusUp = true
+    min.propagateFocusUp = true
     min.dragSelectable = true
+    min.anchorW = "right"
+    min.marginR = 1
     min.pressed = function(o)
         self.visible = false
     end
@@ -133,8 +136,9 @@ function WindowControl:close()
     self:queueFree()
 end
 
-function WindowControl:drag(b, x, y, rx, ry)
-    control.drag(self, b, x, y, rx, ry)
+function WindowControl:drag(b, x, y, dx, dy)
+    self.x = self.x + dx
+    self.y = self.y + dy
     self.w = self.oldW
     self.h = self.oldH
     self.oldW = self.w
@@ -149,11 +153,6 @@ function WindowControl:drag(b, x, y, rx, ry)
     end
 end
 
-function WindowControl:sizeChanged()
-    self.exitButton.x = self.w - 1
-    self.minimizeButton.x = self.w - 2
-end
-
 function WindowControl:refreshMinSize()
     self.minW, self.minH = math.min(self.minW, self.w), math.min(self.minH, self.h)
     self.oldW, self.oldH = self.w, self.h
@@ -164,7 +163,7 @@ function WindowControl:focusChanged()
 end
 
 function WindowControl:updateFocus()
-    if self:inFocus() then
+    if self.focus then
         self:toFront()
         self:grabCursor()
     else
@@ -173,13 +172,14 @@ function WindowControl:updateFocus()
 end
 
 function WindowControl:getStyle()
-    if self:inFocus() then
+    if self.focus then
         return self.styleFocus
     else
         return self.style
     end
 end
 
+function WindowControl:fullscreenChanged() end
 function WindowControl:closed() end
 
 return WindowControl

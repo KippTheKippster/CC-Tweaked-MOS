@@ -9,7 +9,6 @@ local ProgramViewport = control:newClass()
 ProgramViewport.__type = "ProgramViewport"
 
 ProgramViewport.rendering = false
-ProgramViewport.mouseIgnore = false
 ProgramViewport.program = nil
 ProgramViewport.parentTerm = nil
 ProgramViewport.terminated = false
@@ -83,9 +82,7 @@ local function resumeProcess(viewport, data)
     if status == "dead" then
         return { true }
     end
-    local result = mp.resumeProcess(viewport.program, data)
-    --drawChildren(viewport)
-    return result
+    return mp.resumeProcess(viewport.program, data)
 end
 
 ---comment
@@ -102,7 +99,7 @@ function ProgramViewport:unhandledEvent(data)
     local args = data
     if event == "mouse_click" or event == "mouse_drag" or event == "mouse_up" then
         if self.parent:inFocus() == false then return { true } end
-        if engine.input.getCurrentControl() ~= self then return { true } end
+        if engine.input.getClickControl() ~= self then return { true } end
         local button, x, y = data[2], data[3], data[4]
         local offsetX, offsetY = self.program.window.getPosition()
 
@@ -171,7 +168,7 @@ function ProgramViewport:unhandledEvent(data)
     if self.terminated == true then
         if self.parent:inFocus() then
             if event == "char" then
-                engine.input.stopRawEventPropopgation() -- Prevent the char event to be sent to the next auto focus window
+                engine.input.cancelEventPropagation() -- Prevent the char event to be sent to the next auto focus window 
                 self.parent:close()
             elseif event == "key" then
                 local k = data[2]
@@ -206,7 +203,7 @@ function ProgramViewport:unhandledEvent(data)
             term.setCursorPos(1, 1)
             term.setTextColor(colors.red)
             term.setBackgroundColor(colors.black)
-            print("Viewport Result: ", err)
+            print("Viewport Error: ", err)
             if mos then
                 mos.log("Viewport Error: ", err)
             end
@@ -215,6 +212,7 @@ function ProgramViewport:unhandledEvent(data)
         end
 
         self:queueDraw()
+        self.parent:_onViewportEvent()
 
         return result
     end
@@ -229,21 +227,26 @@ function ProgramViewport:updateWindow()
         return
     end
 
+    local current = term.current()
     term.redirect(self.program.window)
 
     self.program.window.reposition(self.gx + 1, self.gy + 1, self.w, self.h) --, self.program.window)
     if self.resizeQueued == true then
         resumeProcess(self, { "term_resize" })
         self.resizeQueued = false
+
+        -- Force parent to draw borders
+        term.redirect(self.parentTerm)
+        self.parent:_onViewportEvent()
+        term.redirect(self.program.window)
     end
 
     self.program.window.setVisible(true)
-
     if self.parent:inFocus() == false then -- This makes it so that only the focused viewport is constantly drawn (unfocused windows have to wait for next redraw)
         self.program.window.setVisible(false)
     end
 
-    term.redirect(self.parentTerm)
+    term.redirect(current)
 end
 
 return ProgramViewport
