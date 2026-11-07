@@ -455,8 +455,9 @@ function Control:getMinSize()
 
     local minW = self.minW
     local minH = self.minH
-    if self.fitToText and self.text ~= "" then
-        minW = math.max(#self.text, minW)
+    local t = self:getText()
+    if self.fitToText and t ~= "" then
+        minW = math.max(#t, minW)
         minH = math.max(1, minH)
     end
 
@@ -801,7 +802,7 @@ function Control:drag(button, x, y, dx, dy) end
 function Control:scroll(dir, x, y) end
 
 function Control:focusChanged() end
--- If the control has cursor control, see control:grabCursor(), this function will be responsible for drawing the cursor 
+-- If the control has cursor control, see control:grabCursor(), this function will be responsible for drawing the cursor
 function Control:updateCursor() end
 function Control:input(data) end
 

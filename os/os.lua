@@ -191,6 +191,7 @@ function mos.addFileFavorite(file, settings)
     favorites[file] = settings
     os.queueEvent("mos_favorite", file)
     engine.utils.saveTable(".mosdata/users/" .. mos.user .. "/.favorites", favorites)
+    mos.refreshMosDropdown()
 end
 
 ---comment
@@ -201,7 +202,12 @@ function mos.removeFileFavorite(file)
     if fav then
         os.queueEvent("mos_favorite_remove", file)
         engine.utils.saveTable(".mosdata/users/" .. mos.user .. "/.favorites", favorites)
+        mos.refreshMosDropdown()
     end
+end
+
+function mos.getFileFavorites()
+    return favorites -- todo return copy
 end
 
 ---comment
@@ -681,6 +687,9 @@ function mos.launchProgram(name, path, x, y, w, h, ...)
     local viewport = programViewport:new()
     window:addViewport(viewport)
 
+    window.minW = math.min(w, window.minW)
+    window.minH = math.min(h, window.minH)
+
     window.x = x
     window.y = y
     window.w = w
@@ -709,10 +718,6 @@ function mos.launchProgram(name, path, x, y, w, h, ...)
 
     addWindow(window)
 
-    local c = term.current()
-    term.redirect(engine.screenBuffer)
-    window:draw() -- Draw top of window while program is loading
-    term.redirect(c)
 
     return window
 end
@@ -1019,7 +1024,7 @@ local function rawEvent(data)
             end
         end
     elseif event == "key" then
-        if data[2] == keys.t then
+        if data[2] == keys.w then
             if engine.input.isKeyHeld(keys.leftCtrl) then
                 ---@type ProgramWindow
                 local focus = engine.input.getFocusControl()
@@ -1089,6 +1094,7 @@ engine.root:add(quickSearch)
 quickSearch.y = 1
 
 mos.log("MOS Start")
+engine.autoTerminate = false
 local err = engine.startMultiProgram(mp)
 mos.log("MOS Exit")
 

@@ -145,6 +145,9 @@ function ProgramViewport:unhandledEvent(data)
 
         self.focusKeys[data[2]] = nil
         args = data
+    elseif event == "terminate" then
+        if self.parent:inFocus() == false then return { true } end
+        args = data
     elseif event == "mos_window_focus" then
         local focus = data[2]
         if focus == false then
@@ -192,6 +195,7 @@ function ProgramViewport:unhandledEvent(data)
         term.setTextColor(colors.white)
         term.setCursorPos(1, self.h)
         term.write("Press any char to close window.")
+        term.setCursorBlink(false)
         term.redirect(self.parentTerm)
         return { true }
     end

@@ -206,6 +206,10 @@ function ProgramWindow:click(b, x, y)
         end
     end
 
+    if d ~= "" then
+        self:queueDraw()
+    end
+
     self._borderDrag = d
 end
 

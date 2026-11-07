@@ -13,6 +13,8 @@ engine.mp = nil
 ---@type Process?
 engine.p = nil
 
+engine.autoTerminate = true
+
 local parentTerm = term.current()
 local initialW, initialH = parentTerm.getSize()
 local screenBuffer = window.create(parentTerm, 1, 1, initialW, initialH)
@@ -215,19 +217,10 @@ local function pRedrawScreen()
     end
 end
 
----@param c Control
-local function update(c)
-    c:update()
-    for _, child in ipairs(c.children) do
-        update(child)
-    end
-end
-
 local count = 0
 local drawTimerID = 0
 local function fnDraw()
     while running do
-        --update(engine.root)
         engine.root:updateTree()
 
         if count >= 0 then
@@ -245,9 +238,9 @@ local function fnDraw()
         end
 
         if engine.mp then
-            drawTimerID = engine.mp.startTimer(engine.p, 0.05)
+            drawTimerID = engine.mp.startTimer(engine.p, 0.0)
         else
-            drawTimerID = os.startTimer(0.05)
+            drawTimerID = os.startTimer(0.0)
         end
         coroutine.yield()
         count = count + 1
@@ -260,6 +253,15 @@ local fnInput = function()
         local data = input.pullEvent()
         if data[1] == "term_resize" then
             resizeBuffer(parentTerm.getSize())
+            engine.root:updateTree()
+            pRedrawScreen()
+            drawQueued = false
+        elseif data[1] == "terminate" and engine.autoTerminate then
+            engine.stop()
+            term.setBackgroundColor(colors.black)
+            term.setTextColor(colors.red)
+            term.setCursorPos(1, 1)
+            term.write"Terminated"
         end
     end
 end
@@ -282,13 +284,11 @@ function engine.start()
 
     running = true
     resizeBuffer(screenBuffer.getSize())
-    pRedrawScreen()
 
 
     local coDraw = coroutine.create(fnDraw)
     local coInput = coroutine.create(fnInput)
 
-    --update(engine.root)
     resume(coDraw)
     while running do
         freeControls()

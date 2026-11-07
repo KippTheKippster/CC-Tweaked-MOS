@@ -16,11 +16,10 @@ ArrayContainer.alignmentMode = "vertical"
 ArrayContainer._resetPending = false
 
 local function errorMode(mode)
-	local level = 1
 	if type(mode) == "string" then
-		error("Invalid alignmentMode " .. mode, level)
+		error("Invalid alignmentMode " .. mode, 1)
 	else
-		error("Invalid alignmentMode, not string!", level)
+		error("Invalid alignmentMode, not string!", 1)
 	end
 end
 
@@ -38,7 +37,6 @@ local function h(o, mode)
 	return ret(o:getH(), o:getW(), mode)
 end
 
-
 local function minH(o, mode)
 	local _w, _h = o:getMinSize()
 	return ret(o:toPaddedH(_h), o:toPaddedW(_w), mode)
@@ -55,7 +53,7 @@ local function desiredSizeH(o, mode)
 end
 
 local function toPaddedH(o, v, mode)
-	return ret(o:toPaddedH(v), o:toPaddedW(v), mode)
+	return ret(o:toPaddedH(v) + o.marginU + o.marginD, o:toPaddedW(v)+ o.marginR + o.marginL, mode)
 end
 
 local function setOy(o, value, mode)
